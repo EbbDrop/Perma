@@ -7,7 +7,51 @@ import { authTables } from "@convex-dev/auth/server";
 // The schema provides more precise TypeScript types.
 export default defineSchema({
   ...authTables,
-  numbers: defineTable({
-    value: v.number(),
+  users: defineTable({
+    // From auth lib
+    name: v.string(),
+    image: v.optional(v.string()),
+    email: v.optional(v.string()),
+    emailVerificationTime: v.optional(v.number()),
+    phone: v.optional(v.string()),
+    phoneVerificationTime: v.optional(v.number()),
+    isAnonymous: v.optional(v.boolean()),
+    // Custom uses data
+    admin: v.boolean(),
+    group: v.id("group"),
+  }).index("email", ["email"])
+    .index("by_group", ["group", "name"]),
+
+  group: defineTable({
+    name: v.string(),
   }),
+
+  slotType: defineTable({
+    group: v.id("group"),
+    name: v.string(),
+  }),
+
+  slots: defineTable({
+    group: v.id("group"),
+
+    type: v.optional(v.id("slotType")),
+    name: v.string(),
+    showTime: v.boolean(),
+
+    // Start date and time
+    start: v.string(),
+    // End date and time
+    end: v.string(),
+
+    performer: v.optional(v.id("users")),
+
+    upcoming: v.boolean(),
+  }).index("by_group_upcoming", ["group", "upcoming", "start"]),
+
+  selectedSlots: defineTable({
+    user: v.id("users"),
+    slot: v.id("slots"),
+  }).index("by_user", ["user"])
+    .index("by_slot", ["slot"])
+    .index("by_user_slot", ["user", "slot"]),
 });

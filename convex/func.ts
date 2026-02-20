@@ -1,0 +1,421 @@
+import { v } from "convex/values";
+import { query, mutation, action, QueryCtx, ActionCtx } from "./_generated/server";
+import { api } from "./_generated/api";
+import { getAuthUserId, createAccount } from "@convex-dev/auth/server";
+import { idFromGroupAndName } from "./auth";
+import { Id, Doc } from "./_generated/dataModel";
+import { DateTime } from "luxon";
+
+async function getAuthUser(ctx: QueryCtx) {
+    const userId = await getAuthUserId(ctx);
+    if (userId === null) {
+      throw Error("Need to log in");
+    }
+    const user = await ctx.db.get("users", userId);
+    if (user === null) {
+      throw Error("Invalid user");
+    }
+    return user;
+}
+
+async function getGroupForUser(ctx: QueryCtx, user: Doc<"users">) {
+    const group = await ctx.db.get("group", user.group);
+    if (group === null) {
+      throw Error("Invalid group for valid user???");
+    }
+    return group;
+}
+
+async function getAuthGroup(ctx: QueryCtx) {
+    const user = await getAuthUser(ctx);
+    return await getGroupForUser(ctx, user);
+}
+
+export const allGroups = query({
+  args: {},
+  handler: async (ctx, args) => {
+    return await ctx.db.query("group").collect();
+  },
+});
+
+export const groupInfo = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const group = getAuthGroup(ctx);
+    return group;
+  },
+});
+
+export const addUser = mutation({
+  args: {
+    name: v.string(),
+    password: v.string()
+  },
+
+  // Mutation implementation.
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("Need to be admin");
+    }
+
+    const group = await getGroupForUser(ctx, user);
+
+    const id = idFromGroupAndName(group._id, args.name);
+    await createAccount(ctx as unknown as ActionCtx, {
+      provider: "password",
+      account: { id, secret: args.password },
+      profile: {
+        name: args.name,
+        group: group._id,
+        admin: false,
+      }
+    });
+  },
+});
+
+export const user = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    return user;
+  },
+});
+
+export const users = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    return await ctx.db.query("users").withIndex("by_group", q => q.eq("group", user.group)).collect();
+  },
+});
+
+export const newUpcommingSlot = mutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    const lastSlot = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", q => q.eq("group", user.group).eq("upcoming", true))
+      .order("desc")
+      .first();
+    console.log(lastSlot);
+
+    var start = DateTime.now().set({ hour: 8, minute: 0, second: 0, millisecond: 0});
+    if (lastSlot !== null) {
+      const lastSlotEnd = DateTime.fromISO(lastSlot.end);
+      if (lastSlotEnd.isValid) {
+        start = lastSlotEnd;
+      }
+    }
+    start = start.toUTC();
+    const end = start.plus({ hours: 1 });
+
+    return await ctx.db.insert("slots", {
+        name: "",
+        group: user.group,
+        showTime: true,
+        start: start.toISO(),
+        end: end.toISO(),
+        upcoming: true
+    });
+  }
+})
+
+export const updateUpcommingSlot = mutation({
+  args: {
+    slot: v.id("slots"),
+
+    data: v.object({
+      name: v.optional(v.string()),
+      type: v.optional(v.id("slotType")),
+      showTime: v.optional(v.boolean()),
+      start: v.optional(v.string()),
+      end: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    const slot = await ctx.db.get("slots", args.slot);
+    if (slot === null || slot.group !== user.group || !slot.upcoming) {
+      throw Error("invalid slot");
+    }
+
+    if (args.data.start !== undefined) {
+      const start = DateTime.fromISO(args.data.start).toUTC();
+      const end = DateTime.fromISO(slot.end).toUTC();
+      if (end < start) {
+        args.data.end = start.toISO() as string;
+      }
+
+      args.data.start = start.toISO() as string;
+    }
+    if (args.data.end !== undefined) {
+      const end = DateTime.fromISO(args.data.end).toUTC();
+      const start = DateTime.fromISO(slot.start).toUTC();
+      if (end < start) {
+        args.data.start = end.toISO() as string;
+      }
+      args.data.end = end.toISO() as string;
+    }
+
+    await ctx.db.patch("slots", args.slot, args.data);
+  }
+})
+
+export const deleteUpcommingSlot = mutation({
+  args: {
+    slot: v.id("slots"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    const slot = await ctx.db.get("slots", args.slot);
+    if (slot === null || slot.group !== user.group || !slot.upcoming) {
+      throw Error("invalid slot");
+    }
+
+    await ctx.db.delete("slots", args.slot);
+  }
+})
+
+export const copyUpcommingSlots = mutation({
+  args: {
+    startRange: v.string(),
+    endRange: v.string(),
+    moveDays: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    const startRange = DateTime.fromISO(args.startRange).toUTC().toISO() as string;
+    const endRange = DateTime.fromISO(args.endRange).toUTC().toISO() as string;
+
+    let slotsToCopy = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", q => 
+        q.eq("group", user.group)
+          .eq("upcoming", true)
+          .gte("start", startRange)
+          .lt("start", endRange)
+      )
+      .collect();
+    
+
+    await Promise.all(slotsToCopy.map(slot => {
+      const start = DateTime.fromISO(slot.start).plus({days: args.moveDays}).toUTC().toISO() as string;
+      const end = DateTime.fromISO(slot.end).plus({days: args.moveDays}).toUTC().toISO() as string;
+      return ctx.db.insert("slots", {
+          start,
+          end,
+          upcoming: true,
+          name: slot.name,
+          showTime: slot.showTime,
+          group: user.group,
+      });
+    }));
+        
+  }
+});
+
+export const slotsSetPerformer = mutation({
+  args: {
+    slot: v.id("slots"),
+    performer: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    const slot = await ctx.db.get("slots", args.slot);
+    if (slot === null || slot.group !== user.group) {
+      throw Error("Invalid slot");
+    }
+    if (slot.upcoming && !user.admin) {
+      throw Error("Upcoming slots can only be edited by admins");     
+    }
+    if (args.performer !== undefined) {
+      const performer = await ctx.db.get("users", args.performer);
+      if (performer === null || performer.group !== user.group) {
+        throw Error("Invalid performer");
+      }
+    }
+
+    await ctx.db.patch("slots", args.slot, { performer: args.performer });
+  },
+})
+
+export const publishUpcoming = mutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    const slotsToPublish = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", q => 
+        q.eq("group", user.group)
+          .eq("upcoming", true)
+      )
+      .collect();
+
+    await Promise.all(slotsToPublish.map(async slot => {
+      const start = DateTime.fromISO(slot.start).plus({weeks: 1}).toUTC().toISO() as string;
+      const end = DateTime.fromISO(slot.end).plus({weeks: 1}).toUTC().toISO() as string;
+      await ctx.db.insert("slots", {
+          start,
+          end,
+          upcoming: true,
+          name: slot.name,
+          showTime: slot.showTime,
+          group: user.group,
+      });
+
+      await ctx.db.patch("slots", slot._id, {
+        upcoming: false
+      })
+
+      const selections = await ctx.db.query("selectedSlots")
+        .withIndex("by_slot", q => q.eq("slot", slot._id))
+        .collect();
+
+      await Promise.all(selections.map(s => {
+        return ctx.db.delete("selectedSlots", s._id);
+      }));
+
+    }));
+
+    // TODO: Remove old? slots
+  }
+});
+
+export const slots = query({
+  args: {
+    upcoming: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+
+    return await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", args.upcoming))
+      .collect();
+  },
+});
+
+export const upcomingSlotsWithSelected = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+
+    const slots = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", true))
+      .collect();
+
+    const users = await ctx.db.query("users")
+      .withIndex("by_group", q => q.eq("group", user.group))
+      .collect();
+
+    const slotsWithUsers = slots.map(async (slot) => {
+      const selected_by = await ctx.db.query("selectedSlots")
+        .withIndex("by_slot", q => q.eq("slot", slot._id))
+        .collect();
+      const selected_user_ids = new Set(selected_by.map(s => s.user));
+
+      return {
+        selected_users: users.filter(u => selected_user_ids.has(u._id)),
+        not_selected_users: users.filter(u => !selected_user_ids.has(u._id)),
+        ...slot,
+      };
+    });
+
+    return await Promise.all(slotsWithUsers);
+  },
+});
+
+export const selectedSlots = query({
+  args: {
+    userId: v.optional(v.id("users")),
+  },
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    const authGroup = await getGroupForUser(ctx, authUser);
+
+    const user = args.userId === undefined ? authUser : await ctx.db.get("users", args.userId);
+    if (user === null) {
+      throw Error("Invalid user");
+    }
+    const userGroup = await getGroupForUser(ctx, user);
+    if (authGroup._id !== userGroup._id) {
+      throw Error("User is part of diffrent group");
+    }
+
+    const slots = await ctx.db.query("selectedSlots").withIndex("by_user", q => q.eq("user", user._id)).collect();
+    return slots.map(s => s.slot);
+  },
+});
+
+export const setSelectedSlot = mutation({
+  args: {
+    slot: v.id("slots"),
+    selected: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    const slot = await ctx.db.get("slots", args.slot);
+    if (slot == null || slot.group !== authUser.group || !slot.upcoming) {
+      throw Error("Invalid slot")
+    }
+
+    const exsisting = await ctx.db.query("selectedSlots")
+      .withIndex("by_user_slot", (q) => q.eq("user", authUser._id).eq("slot", args.slot))
+      .collect();
+
+    if (args.selected) {
+      if (exsisting.length === 0) {
+        ctx.db.insert("selectedSlots", {user: authUser._id,slot: args.slot});
+      }
+    } else {
+      /// Only one should ever exist, but still looping in case of..
+      for (const s of exsisting) {
+        ctx.db.delete("selectedSlots", s._id);
+      }
+    }
+  },
+})
+
+export const slotsForSchedule = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+
+    const slots = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", false))
+      .collect();
+
+    const slotsWithUsers = slots.map(async (slot) => {
+      var performer_user = null;
+      if (slot.performer !== undefined) {
+        performer_user = await ctx.db.get("users", slot.performer);
+      }
+
+      return {
+        performer_user,
+        is_you: slot.performer === user._id,
+        ...slot,
+      };
+    });
+
+    return await Promise.all(slotsWithUsers);
+  },
+});

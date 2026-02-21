@@ -31,7 +31,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <nav>
-        <span>Perma 2000</span>
+        <img src="/etna.svg" className="logo"/>
         <Authenticated>
           <NavLink to="/" end>Schema</NavLink>
           <NavLink to="/invullen" end>Invullen</NavLink>

@@ -48,13 +48,34 @@ export default function App() {
       <main>
         <Authenticated>
           <Routes>
-            <Route index element={<Schedule />}/>
-            <Route path="invullen" element={<FillIn />}/>
-            <Route path="me" element={<Me me={user}/>}/>
+            <Route index element={<>
+              <title>Perma | Schema</title>
+              <Schedule />
+            </>}/>
+            <Route path="invullen" element={<>
+              <title>Perma | Invullen</title>
+              <FillIn />
+            </>}/>
+            <Route path="me" element={<>
+              <title>Perma | {name}</title>
+              <Me me={user}/>
+            </>}/>
             <Route path="admin" element={<Admin />}>
-              <Route index element={<AdminSetPerformer />} />
-              <Route path="slots" element={<><AdminEditSlots /><hr /><h2>Shift soorten</h2><AdminEditTypes /></>} />
-              <Route path="users" element={<AdminEditUsers />} />
+              <Route index element={<>
+                <title>Perma | Maak Schema</title>
+                <AdminSetPerformer />
+              </>} />
+              <Route path="slots" element={<>
+                <title>Perma | Edit Shifts</title>
+                <AdminEditSlots />
+                <hr />
+                <h2>Shift soorten</h2>
+                <AdminEditTypes />
+              </>} />
+              <Route path="users" element={<>
+                <title>Perma | Kot genoten</title>
+                <AdminEditUsers />
+              </>} />
             </Route>
           </Routes>
         </Authenticated>
@@ -89,50 +110,37 @@ function SignInForm() {
   const { signIn } = useAuthActions();
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="flex flex-col gap-8 w-96 mx-auto">
-      <p>Log in to see the numbers</p>
+    <div>
       <form
-        className="flex flex-col gap-2"
+        id="login"
         onSubmit={(e) => {
           e.preventDefault();
           const formData = new FormData(e.target as HTMLFormElement);
-          void signIn("password", formData).catch((error) => {
-            setError(error.message);
+          void signIn("password", formData).catch(_ => {
+            setError("Foute naam of wachtwoord. (Vraag de perma verantwoordelijke om jou wachtwoord te veranderen als je het ben vergeten.)");
           });
         }}
       >
-        <select
-          className="bg-light dark:bg-dark text-dark dark:text-light rounded-md p-2 border-2 border-slate-200 dark:border-slate-800"
-          name="group"
-        >
-          <option value="" disabled selected>Kies groep</option>
-          {...groups.map(group => {
-            return <option value={group._id} key={group._id}>{group.name}</option>;
-          })}
-        </select>
-        <input
-          className="bg-light dark:bg-dark text-dark dark:text-light rounded-md p-2 border-2 border-slate-200 dark:border-slate-800"
-          type="text"
-          name="name"
-          placeholder="Name"
-        />
-        <input
-          className="bg-light dark:bg-dark text-dark dark:text-light rounded-md p-2 border-2 border-slate-200 dark:border-slate-800"
-          type="password"
-          name="password"
-          placeholder="Password"
-        />
-        <button
-          className="bg-dark dark:bg-light text-light dark:text-dark rounded-md"
-          type="submit"
-        >
-        Login
-        </button>
+        <label>
+          Groep
+          <select name="group">
+            {...groups.map(group => {
+              return <option value={group._id} key={group._id}>{group.name}</option>;
+            })}
+          </select>
+        </label>
+        <label>
+          Naam
+          <input type="text" name="name" required />
+        </label>
+        <label>
+          Password
+          <input type="password" name="password" required />
+        </label>
+        <button type="submit">Login</button>
         {error && (
-          <div className="bg-red-500/20 border-2 border-red-500/50 rounded-md p-2">
-            <p className="text-dark dark:text-light font-mono text-xs">
-              Error signing in: {error}
-            </p>
+          <div className="error">
+            {error}
           </div>
         )}
       </form>
@@ -140,7 +148,10 @@ function SignInForm() {
   );
 }
 
-function Me({me}: {me: Doc<"users">}) {
+function Me({me}: {me: Doc<"users"> | undefined}) {
+  if (me === undefined) {
+    return <h3>Aan het laden</h3>;
+  }
   const updateUserPassword = useMutation(api.func.updateUserPassword);
   return (<>
     <h2>{me.name}</h2>
@@ -192,26 +203,32 @@ function farDateWarning(date: DateTime) {
 function CountsTable({ data }: { data: CountsData }) {
   return (<div className="table-holder">
     <table>
-      <tr>
-        <th className="table-empty"></th>
-        {...data.types.map(t => (<th>
-          {t.name}
-        </th>))}
-      </tr>
-      {...data.users.map(u => (<tr>
-        <td>{u.name}</td>
-        {...data.types.map(t => (<td>
-          {t.counts[u._id] ?? 0}
-        </td>))}
-      </tr>))}
-      <tr className="table-empty-row">
-      </tr>
-      <tr className="table-important">
-        <td>Gemidelde</td>
-        {...data.types.map(t => (<td>
-          {(t.sum / data.out_of).toFixed(1)}
-        </td>))}
-      </tr>
+      <thead>
+        <tr>
+          <th className="table-empty"></th>
+          {...data.types.map(t => (<th>
+            {t.name}
+          </th>))}
+        </tr>
+      </thead>
+      <tbody>
+        {...data.users.map(u => (<tr>
+          <td>{u.name}</td>
+          {...data.types.map(t => (<td>
+            {t.counts[u._id] ?? 0}
+          </td>))}
+        </tr>))}
+        <tr className="table-empty-row" aria-hidden="true">
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr className="table-important">
+          <td>Gemidelde</td>
+          {...data.types.map(t => (<td>
+            {(t.sum / data.out_of).toFixed(1)}
+          </td>))}
+        </tr>
+      </tfoot>
     </table>
   </div>);
 }
@@ -268,20 +285,23 @@ function Schedule() {
 
     htmlData.push(<div key={slot._id} className={"slot" + (you ? " you" : "")}>
         {fullName}
-        <select onChange={event => {
-          event.preventDefault();
-          var performer = undefined;
-          if (event.target.value !== "") {
-            performer = event.target.value as Id<"users">;
-          }
+        <select
+          onChange={event => {
+            event.preventDefault();
+            var performer = undefined;
+            if (event.target.value !== "") {
+              performer = event.target.value as Id<"users">;
+            }
 
-          setPerformer({
-            slot: slot._id,
-            performer,
-          })
-        }}>
-          <option value="" selected={slot.performer === undefined}></option>
-          {...users.map(u => userToOption(u, slot.performer))}
+            setPerformer({
+              slot: slot._id,
+              performer,
+            })
+          }}
+          value={slot.performer ?? ""}
+        >
+          <option value=""></option>
+          {...users.map(u => userToOption(u))}
         </select>
     </div>);
   }
@@ -312,12 +332,11 @@ function Schedule() {
   </>);
 }
 
-function userToOption(user: {_id: Id<"users">, name: string}, performer: Id<"users"> | undefined): ReactElement {
+function userToOption(user: {_id: Id<"users">, name: string}): ReactElement {
   return (
     <option
       value={user._id}
       key={user._id}
-      selected={user._id === performer}
     >
       {user.name}
     </option>
@@ -326,7 +345,34 @@ function userToOption(user: {_id: Id<"users">, name: string}, performer: Id<"use
 
 function AdminEditSlots() {
   const newUpcomingSlot = useMutation(api.func.newUpcomingSlot);
-  const updateUpcomingSlot = useMutation(api.func.updateUpcomingSlot);
+  const updateUpcomingSlot = useMutation(api.func.updateUpcomingSlot).withOptimisticUpdate((local_store, args) => {
+    const slots = local_store.getQuery(api.func.slots, {upcoming: true})?.slice();
+    if (slots === undefined) {
+      return;
+    }
+    const idx = slots.findIndex(s => s._id == args.slot);
+    if (idx < 0) {
+      return;
+    }
+    var slot = structuredClone(slots[idx]);
+    if (args.data.end !== undefined) {
+      slot.end = args.data.end;
+    }
+    if (args.data.start !== undefined) {
+      slot.start = args.data.start;
+    }
+    if (args.data.type !== undefined) {
+      slot.type = args.data.type;
+    }
+    if (args.data.name !== undefined) {
+      slot.name = args.data.name;
+    }
+    if (args.data.showTime !== undefined) {
+      slot.showTime = args.data.showTime;
+    }
+    slots[idx] = slot;
+    local_store.setQuery(api.func.slots, {upcoming: true}, slots);
+  });
   const deleteUpcomingSlot = useMutation(api.func.deleteUpcomingSlot);
   const rangeEditUpcomingSlos = useMutation(api.func.rangeEditUpcomingSlots);
   
@@ -380,8 +426,8 @@ function AdminEditSlots() {
 
     function onChange(param: string, type: "dt" | "text" | "c" | "id") {
       return (event: ChangeEvent<HTMLInputElement, HTMLInputElement> | ChangeEvent<HTMLSelectElement, HTMLSelectElement>) => {
-        var data: Record<string, string | boolean | undefined> = {};
-        var value: string | boolean | undefined = "";
+        var data: Record<string, string | boolean | null> = {};
+        var value: string | boolean | null = "";
         if (type === "text") {
           value = event.target.value;
         } else if (type == "dt"){
@@ -389,7 +435,7 @@ function AdminEditSlots() {
         } else if (type === "c") {
           value = event.target.checked;
         } else if (type === "id") {
-          value = event.target.value || undefined;
+          value = event.target.value || null;
         }
         data[param] = value;
         updateUpcomingSlot({
@@ -406,9 +452,9 @@ function AdminEditSlots() {
       </label>
       <label>
         Shift soort: 
-        <select onChange={onChange("type", "id")}>
-          <option value="" selected={slot.type === undefined}>Geen</option>
-          {...types.map(t => <option value={t._id} selected={slot.type === t._id}>{t.name}</option>)}
+        <select onChange={onChange("type", "id")} value={slot.type ?? ""}>
+          <option value="">--</option>
+          {...types.map(t => <option value={t._id}>{t.name}</option>)}
         </select>
       </label>
       <label>
@@ -539,23 +585,26 @@ function AdminSetPerformer() {
           {warn && <div className="warn" title="Deze persoon heeft niet aangeduit dat ze konden op deze shift.">⚠️</div>}
         </div>
 
-        <select onChange={event => {
-          event.preventDefault();
-          var performer = undefined;
-          if (event.target.value !== "") {
-            performer = event.target.value as Id<"users">;
-          }
+        <select
+          onChange={event => {
+            event.preventDefault();
+            var performer = undefined;
+            if (event.target.value !== "") {
+              performer = event.target.value as Id<"users">;
+            }
 
-          setPerformer({
-            slot: slot._id,
-            performer,
-          })
-        }}>
+            setPerformer({
+              slot: slot._id,
+              performer,
+            })
+          }}
+          value={slot.performer ?? ""}
+        >
           <option value=""></option>
           <option disabled>-- kunnen --</option>
-          {...slot.selected_users.map(u => userToOption(u, slot.performer))}
+          {...slot.selected_users.map(u => userToOption(u))}
           <option disabled>-- kunnen NIET --</option>
-          {...slot.not_selected_users.map(u => userToOption(u, slot.performer))}
+          {...slot.not_selected_users.map(u => userToOption(u))}
         </select>
     </label>);
   }

@@ -363,6 +363,7 @@ export const newUpcomingSlot = mutation({
 
     return await ctx.db.insert("slots", {
         name: "",
+        type: null,
         group: user.group,
         showTime: true,
         start: start.toISO(),
@@ -378,7 +379,7 @@ export const updateUpcomingSlot = mutation({
 
     data: v.object({
       name: v.optional(v.string()),
-      type: v.optional(v.id("slotType")),
+      type: v.optional(v.union(v.null(), v.id("slotType"))),
       showTime: v.optional(v.boolean()),
       start: v.optional(v.string()),
       end: v.optional(v.string()),
@@ -514,7 +515,7 @@ export const slotsSetPerformer = mutation({
       }
     }
 
-    if (!slot.upcoming && slot.type !== undefined && slot.performer !== args.performer) {
+    if (!slot.upcoming && slot.type !== null && slot.performer !== args.performer) {
       if (slot.performer !== undefined) {
         await updatePerformingCount(ctx, slot.performer, slot.type, -1);
       }
@@ -561,7 +562,7 @@ export const autoSetPerformerUpcoming = mutation({
     // If not replacing: Take the already set slots into acount
     if (!args.replace) {
       for (const slot of slots) {
-        if (slot.type !== undefined && slot.performer !== undefined) {
+        if (slot.type !== null && slot.performer !== undefined) {
           counts[slot.type][slot.performer] = (counts[slot.type][slot.performer] ?? 0) + 1;
         }
       }
@@ -579,7 +580,7 @@ export const autoSetPerformerUpcoming = mutation({
       }
 
       var selectedUser;
-      if (slot.type === undefined) {
+      if (slot.type === null) {
         selectedUser = selected_by[Math.floor(Math.random() * selected_by.length)].user;
       } else {
         const type = slot.type;

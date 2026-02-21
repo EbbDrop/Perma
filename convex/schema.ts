@@ -36,7 +36,7 @@ export default defineSchema({
   slots: defineTable({
     group: v.id("group"),
 
-    type: v.optional(v.id("slotType")),
+    type: v.nullable(v.id("slotType")),
     name: v.string(),
     showTime: v.boolean(),
 

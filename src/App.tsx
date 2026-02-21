@@ -424,7 +424,7 @@ function AdminEditSlots() {
       </div>);
     }
 
-    function onChange(param: string, type: "dt" | "text" | "c" | "id") {
+    function onChange(param: string, type: "dt" | "text" | "id") {
       return (event: ChangeEvent<HTMLInputElement, HTMLInputElement> | ChangeEvent<HTMLSelectElement, HTMLSelectElement>) => {
         var data: Record<string, string | boolean | null> = {};
         var value: string | boolean | null = "";
@@ -432,8 +432,6 @@ function AdminEditSlots() {
           value = event.target.value;
         } else if (type == "dt"){
           value = DateTime.fromISO(event.target.value).toUTC().toISO() as string;
-        } else if (type === "c") {
-          value = event.target.checked;
         } else if (type === "id") {
           value = event.target.value || null;
         }
@@ -467,7 +465,14 @@ function AdminEditSlots() {
       </label>
       <label>
         Toon tijd in schema:
-        <input type="checkbox" onChange={onChange("showTime", "c")} checked={slot.showTime}/>
+        <input type="checkbox" onChange={e => {
+          updateUpcomingSlot({
+            slot: slot._id,
+            data: {
+              showTime: e.target.checked,
+            }
+          })
+        }} checked={slot.showTime}/>
       </label>
       <button onClick={_ => deleteUpcomingSlot({slot: slot._id})}>verwijder</button>
     </div>);

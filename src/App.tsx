@@ -176,9 +176,9 @@ function slotStrings(slot: Doc<"slots">) {
 }
 
 function farDateWarning(date: DateTime) {
-  let diff = Math.floor(date.diffNow("days").days);
+  let diff = Math.trunc(date.toLocal().diffNow("days").days);
   if (diff < 0 || diff >= 7) {
-    if (diff < 1) {
+    if (diff < -1) {
       return `(${-diff} daggen geleden)`;
     } else if (diff < 0) {
       return `(${-diff} dag geleden)`;
@@ -596,7 +596,7 @@ function AdminSetPerformer() {
           {...htmlData}
         </div>
         <hr/>
-        <button onClick={_ => publishUpcoming()} id="publish">Publiceer</button>
+        <button onClick={_ => publishUpcoming({now: DateTime.now().toISO()})} id="publish">Publiceer</button>
       </div>
       <div className="table-column">
         <div>

@@ -596,11 +596,26 @@ export const autoSetPerformerUpcoming = mutation({
 });
 
 export const publishUpcoming = mutation({
-  args: {},
+  args: {
+    now: v.string(),
+  },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");     
+    }
+
+
+    const startToday = DateTime.fromISO(args.now).startOf('day').toUTC().toISO() as string;
+
+    const oldSlots = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", q => q.eq("group", user.group)
+        .eq("upcoming", false)
+        .lt("start", startToday))
+      .collect();
+
+    for (const slot of oldSlots) {
+      await ctx.db.delete("slots", slot._id);
     }
 
     const slotsToPublish = await ctx.db.query("slots")
@@ -668,8 +683,6 @@ export const publishUpcoming = mutation({
     for (const user of users) {
       ctx.db.patch("users", user._id, {note: undefined});
     }
-
-    // TODO: Remove old? slots
   }
 });
 

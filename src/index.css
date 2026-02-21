@@ -266,7 +266,8 @@ body {
 main {
   flex: 1;
   padding: 1em;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 h1 {
@@ -275,14 +276,18 @@ h1 {
 }
 
 h2 {
-  font-size: 1.9em;
+  font-size: 1.7em;
+  margin-bottom: 0.4em;
+}
+
+h3 {
+  font-size: 1.6em;
   margin-bottom: 0.4em;
 }
 
 table {
   border-collapse: separate;
   border-spacing: 0.1em;
-  width: 100%;
 }
 
 th,
@@ -327,7 +332,20 @@ select {
   padding: 0.5em;
   color: var(--color-text);
   background-color: var(--color-bg);
+}
 
+textarea {
+  box-sizing: border-box;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.5em;
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+ul {
+  list-style: disc;
+  margin-left: 1em;
 }
 
 a {
@@ -375,6 +393,7 @@ nav>*:last-child {
 
 .table-column {
   max-width: max-content;
+  width: 100%;
 }
 
 .table-column>* {
@@ -444,11 +463,16 @@ nav>*:last-child {
   color: var(--color-text-accent);
 }
 
-.admin-slot-edit-buttons {
+.admin-bulk-edit-buttons {
   display: flex;
   flex-direction: row;
   gap: 0.2em;
   margin-bottom: 0.4em;
+}
+
+.admin-bulk-edit-buttons>button {
+  background-color: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
 }
 
 .day-title-buttons {
@@ -495,21 +519,25 @@ nav>*:last-child {
   background-color: var(--color-bg-primary-l);
 }
 
-.slot-edit {
+.edit-row {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   gap: 0.3em;
 }
 
-.slot-edit>*:last-child {
+.edit-row>*:last-child {
   margin-left: auto;
 }
 
-#slot-types {
+.edit-list {
   display: flex;
   flex-direction: column;
   gap: 0.6em;
+}
+
+.table-holder {
+  overflow-x: auto;
 }
 
 .table-empty {
@@ -527,4 +555,19 @@ nav>*:last-child {
 .table-important>td {
   background: var(--color-bg-primary);
   color: var(--color-text-primary)
+}
+
+.notes {
+  resize: none;
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.admin-note {
+  margin-left: 1em;
+}
+
+.edit-name {
+  width: 8em;
 }

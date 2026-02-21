@@ -17,6 +17,8 @@ export default defineSchema({
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
     // Custom uses data
+    assisted: v.boolean(),
+    note: v.optional(v.string()),
     admin: v.boolean(),
     group: v.id("group"),
   }).index("email", ["email"])

@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { query, mutation, action, QueryCtx, MutationCtx, ActionCtx, internalMutation } from "./_generated/server";
 import { api } from "./_generated/api";
-import { getAuthUserId, createAccount } from "@convex-dev/auth/server";
+import { getAuthUserId, createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { idFromGroupAndName } from "./auth";
 import { Id, Doc } from "./_generated/dataModel";
 import { DateTime } from "luxon";
@@ -68,8 +68,98 @@ export const addUser = mutation({
         name: args.name,
         group: group._id,
         admin: false,
+        assisted: false,
       }
     });
+  },
+});
+
+export const updateUser = mutation({
+  args: {
+    user: v.id("users"),
+
+    data: v.object({
+      name: v.optional(v.string()),
+      assisted: v.optional(v.boolean()),
+      admin: v.optional(v.boolean()),
+    }),
+  },
+
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    if (!authUser.admin) {
+      throw Error("Need to be admin");
+    }
+    if (authUser._id == args.user && args.data.admin === false) {
+      return null;
+    }
+
+    const user = await ctx.db.get("users", args.user);
+    if (user === null || user.group !== authUser.group) {
+      throw Error("Invalid user");
+    }
+
+    ctx.db.patch("users", args.user, args.data)
+  },
+});
+
+export const updateUserPassword = mutation({
+  args: {
+    user: v.optional(v.id("users")),
+    password: v.string()
+  },
+
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    if (args.user !== undefined && !authUser.admin) {
+      throw Error("Need to be admin to modify other persons password");
+    }
+
+    var user = authUser;
+    if (args.user !== undefined) {
+      const otherUser = await ctx.db.get("users", args.user);
+      if (otherUser === null) {
+        throw Error("Invalid user");
+      }
+      user = otherUser;
+    }
+
+    const id = idFromGroupAndName(user.group, user.name);
+    await modifyAccountCredentials(ctx as unknown as ActionCtx, {
+      provider: "password",
+      account: { id, secret: args.password },
+    });
+  },
+});
+
+export const deleteUser = mutation({
+  args: {
+    user: v.id("users"),
+  },
+
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    if (!authUser.admin) {
+      throw Error("Need to be admin");
+    }
+    if (authUser._id === args.user) {
+      throw Error("Can't delete yourself");
+    }
+
+    const user = await ctx.db.get("users", args.user);
+    if (user == null) {
+      throw Error("Invalid user");
+    }
+
+    const id = idFromGroupAndName(user.group, user.name);
+    const account = await ctx.db.query("authAccounts")
+      .withIndex("providerAndAccountId", q => q.eq("provider", "password")
+      .eq("providerAccountId", id))
+      .unique();
+    if (account !== null) {
+      ctx.db.delete("authAccounts", account._id)
+    }
+    ctx.db.delete("users", args.user);
   },
 });
 
@@ -202,7 +292,7 @@ export const countsTable = query({
   args: {},
   handler: async (ctx, args): Promise<CountsData> => {
     const authUser = await getAuthUser(ctx);
-    const users = await ctx.db.query("users")
+    const users  = await ctx.db.query("users")
       .withIndex("by_group", q => q.eq("group", authUser.group))
       .collect();
 
@@ -210,6 +300,9 @@ export const countsTable = query({
       .withIndex("by_group", q => q.eq("group", authUser.group))
       .collect();
 
+    const asistands = new Set(users.filter(u => !u.assisted).map(u => u._id));
+
+    var usersWithNonZeroCounts = new Set();
     var typesWithCounts: CountData[] = [];
     for (const type of types) {
       const rawCounts = await ctx.db.query("performingCount")
@@ -217,8 +310,13 @@ export const countsTable = query({
         .collect();
       const counts = new Map(rawCounts.map(c => [c.user, c.count]));
       var sum = 0;
-      for (const c of counts.values()) {
-        sum += c;
+      for (const [u, c] of counts.entries()) {
+        if (c !== 0) {
+          usersWithNonZeroCounts.add(u);
+        }
+        if (asistands.has(u)) {
+          sum += c;
+        }
       }
 
       typesWithCounts.push({
@@ -229,9 +327,11 @@ export const countsTable = query({
       });
     }
 
+    const usersToShow = users.filter(u => !u.assisted || usersWithNonZeroCounts.has(u._id));
+
     return {
-      users,
-      out_of: users.length,
+      users: usersToShow,
+      out_of: asistands.size,
       types: typesWithCounts,
     };
   },
@@ -427,6 +527,74 @@ export const slotsSetPerformer = mutation({
   },
 })
 
+export const autoSetPerformerUpcoming = mutation({
+  args: {
+    replace: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    const slots = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", true))
+      .collect();
+    const users = await ctx.db.query("users")
+      .withIndex("by_group", (q) => q.eq("group", user.group))
+      .collect();
+    const types = await ctx.db.query("slotType")
+      .withIndex("by_group", (q) => q.eq("group", user.group))
+      .collect();
+
+    var counts: Record<Id<"slotType">, Record<Id<"users">, number>> = {};
+    for (const type of types) {
+      const rawCounts = await ctx.db.query("performingCount")
+        .withIndex("by_type_user", q => q.eq("type", type._id))
+        .collect()
+
+      counts[type._id] = Object.fromEntries(
+        rawCounts.map(c => [c.user, c.count])
+      );
+    }
+
+    // If not replacing: Take the already set slots into acount
+    if (!args.replace) {
+      for (const slot of slots) {
+        if (slot.type !== undefined && slot.performer !== undefined) {
+          counts[slot.type][slot.performer] = (counts[slot.type][slot.performer] ?? 0) + 1;
+        }
+      }
+    }
+
+    for (const slot of slots) {
+      if (slot.performer !== undefined && !args.replace) {
+        continue;
+      }
+      const selected_by = await ctx.db.query("selectedSlots")
+        .withIndex("by_slot", q => q.eq("slot", slot._id))
+        .collect();
+      if (selected_by.length === 0) {
+        continue;
+      }
+
+      var selectedUser;
+      if (slot.type === undefined) {
+        selectedUser = selected_by[Math.floor(Math.random() * selected_by.length)].user;
+      } else {
+        const type = slot.type;
+        let countsAndUserIds = selected_by.map(s => ({count: counts[type][s.user] ?? 0, user: s.user}));
+        countsAndUserIds.sort((a, b) => a.count - b.count);
+        selectedUser = countsAndUserIds[0].user;
+
+        counts[type][selectedUser] = (counts[type][selectedUser] ?? 0) + 1;
+      }
+
+      ctx.db.patch("slots", slot._id, {performer: selectedUser});
+    }
+  },
+});
+
 export const publishUpcoming = mutation({
   args: {},
   handler: async (ctx, args) => {
@@ -494,6 +662,13 @@ export const publishUpcoming = mutation({
       updatePerformingCount(ctx, performer as Id<"users">, type as Id<"slotType">, c);
     }
 
+    const users = await ctx.db.query("users")
+      .withIndex("by_group", q => q.eq("group", user.group))
+      .collect();
+    for (const user of users) {
+      ctx.db.patch("users", user._id, {note: undefined});
+    }
+
     // TODO: Remove old? slots
   }
 });
@@ -520,9 +695,13 @@ export const upcomingSlotsWithSelected = query({
       .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", true))
       .collect();
 
-    const users = await ctx.db.query("users")
+    const rawUsers = await ctx.db.query("users")
       .withIndex("by_group", q => q.eq("group", user.group))
       .collect();
+    const users = rawUsers.map(u => ({
+      _id: u._id,
+      name: u.name,
+    }));
 
     const slotsWithUsers = slots.map(async (slot) => {
       const selected_by = await ctx.db.query("selectedSlots")
@@ -589,6 +768,24 @@ export const setSelectedSlot = mutation({
         ctx.db.delete("selectedSlots", s._id);
       }
     }
+  },
+})
+
+export const setNote = mutation({
+  args: {
+    note: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    await ctx.db.patch("users", user._id, { note: args.note })
+  },
+})
+
+export const note = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    return user.note;
   },
 })
 

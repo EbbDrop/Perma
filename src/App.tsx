@@ -13,6 +13,7 @@ import { ChangeEvent, ReactElement, useEffect, useState } from "react";
 import { BrowserRouter, NavLink, Outlet, Route, Routes } from "react-router";
 import { DateTime } from "luxon";
 import { Doc, Id } from "../convex/_generated/dataModel";
+import { CountsData } from "../convex/func";
 
 export default function App() {
   var isAdmin = false;
@@ -49,7 +50,7 @@ export default function App() {
             <Route path="invullen" element={<FillIn />}/>
             <Route path="admin" element={<Admin />}>
               <Route index element={<AdminSetPerformer />} />
-              <Route path="slots" element={<AdminEditSlots />} />
+              <Route path="slots" element={<><AdminEditSlots /><hr /><h2>Shift soorten</h2><AdminEditTypes /></>} />
             </Route>
           </Routes>
         </Authenticated>
@@ -135,6 +136,66 @@ function SignInForm() {
   );
 }
 
+function slotStrings(slot: Doc<"slots">) {
+    const start = DateTime.fromISO(slot.start).toLocal();
+    const end = DateTime.fromISO(slot.end).toLocal();
+
+    const dayString = start.toLocaleString({ weekday: "long", day: "2-digit", month: "2-digit" });
+    
+    var fullName = slot.name;
+    if (slot.showTime) {
+      const startHour = start.toLocaleString(DateTime.TIME_SIMPLE);
+      var endHour;
+      if (end.hasSame(start, "day")) {
+        endHour = end.toLocaleString(DateTime.TIME_SIMPLE);
+      } else {
+        endHour = end.toLocaleString({ weekday: 'short', hour: '2-digit', minute: '2-digit' });
+      }
+
+      fullName += ` (${startHour} tot ${endHour})`
+    }
+
+    return {start, end, dayString, fullName};
+}
+
+function farDateWarning(date: DateTime) {
+  let diff = Math.floor(date.diffNow("days").days);
+  if (diff < 0 || diff >= 7) {
+    if (diff < 1) {
+      return `(${-diff} daggen geleden)`;
+    } else if (diff < 0) {
+      return `(${-diff} dag geleden)`;
+    } else {
+      return `(Over ${diff} dagen)`;
+    }
+  }
+  return null;
+}
+
+function CountsTable({ data }: { data: CountsData }) {
+  return (<table>
+    <tr>
+      <th className="table-empty"></th>
+      {...data.types.map(t => (<th>
+        {t.name}
+      </th>))}
+    </tr>
+    {...data.users.map(u => (<tr>
+      <td>{u.name}</td>
+      {...data.types.map(t => (<td>
+        {t.counts[u._id] ?? 0}
+      </td>))}
+    </tr>))}
+    <tr className="table-empty-row">
+    </tr>
+    <tr className="table-important">
+      <td>Gemidelde</td>
+      {...data.types.map(t => (<td>
+        {(t.sum / data.out_of).toFixed(1)}
+      </td>))}
+    </tr>
+  </table>);
+}
 
 function Schedule() {
   const [now, setNow] = useState(DateTime.now())
@@ -158,9 +219,10 @@ function Schedule() {
 
   const user = useQuery(api.func.user, {});
   const users = useQuery(api.func.users, {});
+  const counts = useQuery(api.func.countsTable, {});
   const slots = useQuery(api.func.slots, {upcoming: false});
-  if (slots === undefined || user === undefined || users === undefined) {
-    return <h3>Loading</h3>;
+  if (slots === undefined || user === undefined || users === undefined || counts === undefined) {
+    return <h3>Aan het laden</h3>;
   }
 
   var rightNow = [];
@@ -171,7 +233,7 @@ function Schedule() {
     const { start, end, dayString, fullName } = slotStrings(slot);
     if (lastDayString !== dayString) {
       lastDayString = dayString;
-      htmlData.push(<h2 className="day-title">{dayString}</h2>);
+      htmlData.push(<h2 className="day-title">{dayString} {farDateWarning(start)}</h2>);
     }
 
     if (start <= now && now <= end && slot.performer !== undefined && slot.showTime) {
@@ -199,6 +261,7 @@ function Schedule() {
             performer,
           })
         }}>
+          <option value="" selected={slot.performer === undefined}></option>
           {...users.map(u => userToOption(u, slot.performer))}
         </select>
     </div>);
@@ -214,35 +277,20 @@ function Schedule() {
     rightNowHtml = (<div id="right-now">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{e.performerName}</strong></span>)]).slice(1)}</div>);
   }
 
-  return (<div>
+  return (<>
     {rightNowHtml}
-    <br/>
-    <div className="schedule-container">
-    {...htmlData}
+    <div className="columns-layout">
+      <div className="schedule-container small-colum">
+      {...htmlData}
+      </div>
+      <div className="table-column">
+        <div>
+          <h2>Overzicht</h2>
+          <CountsTable data={counts}/>
+        </div>
+      </div>
     </div>
-  </div>);
-}
-
-function slotStrings(slot: Doc<"slots">) {
-    const start = DateTime.fromISO(slot.start).toLocal();
-    const end = DateTime.fromISO(slot.end).toLocal();
-
-    const dayString = start.toLocaleString({ weekday: "long", day: "2-digit", month: "2-digit" });
-    
-    var fullName = slot.name;
-    if (slot.showTime) {
-      const startHour = start.toLocaleString(DateTime.TIME_SIMPLE);
-      var endHour;
-      if (end.hasSame(start, "day")) {
-        endHour = end.toLocaleString(DateTime.TIME_SIMPLE);
-      } else {
-        endHour = end.toLocaleString({ weekday: 'short', hour: '2-digit', minute: '2-digit' });
-      }
-
-      fullName += ` (${startHour} tot ${endHour})`
-    }
-
-    return {start, end, dayString, fullName};
+  </>);
 }
 
 function userToOption(user: Doc<"users">, performer: Id<"users"> | undefined): ReactElement {
@@ -258,14 +306,15 @@ function userToOption(user: Doc<"users">, performer: Id<"users"> | undefined): R
 }
 
 function AdminEditSlots() {
-  const newUpcomingSlot = useMutation(api.func.newUpcommingSlot);
-  const updateUpcomingSlot = useMutation(api.func.updateUpcommingSlot);
-  const deleteUpcomingSlot = useMutation(api.func.deleteUpcommingSlot);
-  const copyUpcommingSlots = useMutation(api.func.copyUpcommingSlots);
+  const newUpcomingSlot = useMutation(api.func.newUpcomingSlot);
+  const updateUpcomingSlot = useMutation(api.func.updateUpcomingSlot);
+  const deleteUpcomingSlot = useMutation(api.func.deleteUpcomingSlot);
+  const rangeEditUpcomingSlos = useMutation(api.func.rangeEditUpcomingSlots);
   
+  const types = useQuery(api.func.slotTypes, {});
   const slots = useQuery(api.func.slots, {upcoming: true});
-  if (slots === undefined) {
-    return <h3>Loading</h3>;
+  if (slots === undefined || types === undefined) {
+    return <h3>Aan het laden</h3>;
   }
 
   var htmlDataSlots = [];
@@ -291,26 +340,37 @@ function AdminEditSlots() {
         <h3>{dayString}</h3>
         <div className="day-title-buttons">
           <button onClick={_ => {
-            copyUpcommingSlots({
+            rangeEditUpcomingSlos({
                 startRange,
                 endRange,
-                moveDays: 1
+                moveDays: 1,
+                action: "copy",
             })
           }}>copier naar volgende dag</button>
+          <button onClick={_ => {
+            rangeEditUpcomingSlos({
+                startRange,
+                endRange,
+                moveDays: 0,
+                action: "delete",
+            })
+          }}>verwijder dag</button>
         </div>
       </div>);
     }
 
-    function onChange(param: string, type: "dt" | "text" | "c") {
+    function onChange(param: string, type: "dt" | "text" | "c" | "id") {
       return (event: ChangeEvent<HTMLInputElement, HTMLInputElement>) => {
-        var data: Record<string, string | boolean> = {};
-        var value: string | boolean = "";
+        var data: Record<string, string | boolean | undefined> = {};
+        var value: string | boolean | undefined = "";
         if (type === "text") {
           value = event.target.value;
         } else if (type == "dt"){
           value = DateTime.fromISO(event.target.value).toUTC().toISO() as string;
         } else if (type === "c") {
           value = event.target.checked;
+        } else if (type === "id") {
+          value = event.target.value || undefined;
         }
         data[param] = value;
         updateUpcomingSlot({
@@ -327,8 +387,9 @@ function AdminEditSlots() {
       </label>
       <label>
         Shift soort: 
-        <select>
-          <option>TODO</option>
+        <select onChange={onChange("type", "id")}>
+          <option value="" selected={slot.type === undefined}>Geen</option>
+          {...types.map(t => <option value={t._id} selected={slot.type === t._id}>{t.name}</option>)}
         </select>
       </label>
       <label>
@@ -351,11 +412,56 @@ function AdminEditSlots() {
   }
 
   return (<>
+    <div className="admin-slot-edit-buttons">
+      <button onClick={_ => rangeEditUpcomingSlos({
+          startRange: DateTime.fromMillis(0).toUTC().toISO() as string,
+          endRange: DateTime.fromObject({year: 5000}).toUTC().toISO() as string,
+          moveDays: -7,
+          action: "move"
+      })}>Verplaats 1 week achteruit</button>
+      <button onClick={_ => rangeEditUpcomingSlos({
+          startRange: DateTime.fromMillis(0).toUTC().toISO() as string,
+          endRange: DateTime.fromObject({year: 5000}).toUTC().toISO() as string,
+          moveDays: 7,
+          action: "move"
+      })}>Verplaats 1 week vooruit</button>
+      <button onClick={_ => newUpcomingSlot({})}>Voeg nieuwe shift toe</button>
+    </div>
     <div className="schedule-container">
       {...htmlDataSlots}
     </div>
+  </>);
+}
+
+function AdminEditTypes() {
+  const addType = useMutation(api.func.addSlotTypes);
+  const updateType = useMutation(api.func.updateSlotTypes);
+  const deleteType = useMutation(api.func.deleteSlotTypes);
+
+  const types = useQuery(api.func.slotTypes, {});
+  if (types === undefined) {
+    return <h3>Aan het laden</h3>;
+  }
+
+  var htmlData = [];
+  for (const type of types) {
+    htmlData.push(<div key={type._id}>
+      <input type="text" onBlur={e => updateType({
+          name: e.target.value,
+          slotType: type._id,
+      })} defaultValue={type.name} />
+      <span> </span>
+      <button onClick={_ => deleteType({slotType: type._id})}>verwijder</button>
+    </div>);
+  }
+
+  return (<>
+    <span>Sift soorten worden gebruikt om de totaal opgenomen siften te bereken. Eén totaal per shift soort per persoon. <strong>Pas op met het verwijderen van een shift soort, all total van die soort gaan dan ook verloren.</strong></span>
     <br/>
-    <button onClick={_ => newUpcomingSlot({})}>Voeg nieuwe shift toe</button>
+    <br/>
+    <div id="slot-types">{...htmlData}</div>
+    <br/>
+    <button onClick={_ => addType()}>Add shift</button>
   </>);
 }
 
@@ -378,18 +484,26 @@ function AdminSetPerformer() {
     });
 
   const slots = useQuery(api.func.upcomingSlotsWithSelected);
-  if (slots === undefined) {
-    return <h3>Loading</h3>;
+  const counts = useQuery(api.func.countsTable);
+  if (slots === undefined || counts === undefined) {
+    return <h3>Aan het laden</h3>;
   }
+  const countsWith = structuredClone(counts);
 
   var htmlData = [];
   var lastDayString = undefined;
 
   for (const slot of slots) {
-    const { dayString, fullName } = slotStrings(slot);
+    let countIdx = countsWith.types.findIndex(t => t._id === slot.type);
+    if (countIdx >= 0 && slot.performer !== undefined) {
+      countsWith.types[countIdx].counts[slot.performer] = (countsWith.types[countIdx].counts[slot.performer] ?? 0) + 1;
+      countsWith.types[countIdx].sum += 1;
+    }
+
+    const { start, dayString, fullName } = slotStrings(slot);
     if (lastDayString !== dayString) {
       lastDayString = dayString;
-      htmlData.push(<h3 className="day-title">{dayString}</h3>);
+      htmlData.push(<h3 className="day-title">{dayString} {farDateWarning(start)}</h3>);
     }
 
     const warn = slot.performer !== undefined
@@ -425,13 +539,26 @@ function AdminSetPerformer() {
     htmlData.push(<div>Nog geen shiften gemaakt. Gebruik "shifts bewerken" hierboven om er toe te voegen</div>);
   }
 
-  return (<div>
-    <div className="schedule-container">
-      {...htmlData}
+  return (
+    <div className="columns-layout">
+      <div className="small-colum">
+        <div className="schedule-container" >
+          {...htmlData}
+        </div>
+        <hr/>
+        <button onClick={_ => publishUpcoming()} id="publish">Publiceer</button>
+      </div>
+      <div className="table-column">
+        <div>
+          <h2>Overzicht ZONDER volgend schema</h2>
+          <CountsTable data={counts}/>
+          <hr/>
+          <h2>Overzicht MET volgend schema</h2>
+          <CountsTable data={countsWith}/>
+        </div>
+      </div>
     </div>
-    <hr/>
-    <button onClick={_ => publishUpcoming()} id="publish">Publiceer</button>
-  </div>);
+  );
 }
 
 function Admin() {
@@ -465,9 +592,10 @@ function FillIn() {
   });
 
   const slots = useQuery(api.func.slots, {upcoming: true});
-  const selectedSlots = useQuery(api.func.selectedSlots, {});
-  if (slots === undefined || selectedSlots == undefined) {
-    return <h3>Loading</h3>;
+  const selectedSlots = useQuery(api.func.selectedSlots);
+  const counts = useQuery(api.func.countsTable);
+  if (slots === undefined || selectedSlots == undefined || counts == undefined) {
+    return <h3>Aan het laden</h3>;
   }
   if (slots.length === 0) {
     return <h3>Geen perma nodig</h3>;
@@ -477,11 +605,12 @@ function FillIn() {
   var lastDayString = undefined;
 
   for (const slot of slots) {
-    const { dayString, fullName } = slotStrings(slot);    
+    const { start, dayString, fullName } = slotStrings(slot);
 
     if (lastDayString !== dayString) {
+      htmlData.push(<h2 className="day-title">{dayString} {farDateWarning(start)}</h2>);
+
       lastDayString = dayString;
-      htmlData.push(<h2 className="day-title">{dayString}</h2>);
     }
 
     const checked = selectedSlots.includes(slot._id);
@@ -498,9 +627,15 @@ function FillIn() {
     </label>);
   }
 
-  return (
-    <div className="schedule-container">
+  return (<div className="columns-layout">
+    <div className="schedule-container small-colum">
      {...htmlData}
     </div>
-  );
+    <div className="table-column">
+      <div>
+        <h2>Overzicht</h2>
+        <CountsTable data={counts}/>
+      </div>
+    </div>
+  </div>);
 }

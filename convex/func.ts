@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation, action, QueryCtx, ActionCtx } from "./_generated/server";
+import { query, mutation, action, QueryCtx, MutationCtx, ActionCtx, internalMutation } from "./_generated/server";
 import { api } from "./_generated/api";
 import { getAuthUserId, createAccount } from "@convex-dev/auth/server";
 import { idFromGroupAndName } from "./auth";
@@ -52,7 +52,6 @@ export const addUser = mutation({
     password: v.string()
   },
 
-  // Mutation implementation.
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
     if (!user.admin) {
@@ -90,7 +89,155 @@ export const users = query({
   },
 });
 
-export const newUpcommingSlot = mutation({
+export const addSlotTypes = mutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    return await ctx.db.insert("slotType", {
+        name: "",
+        group: user.group,
+    });
+  },
+});
+
+export const updateSlotTypes = mutation({
+  args: {
+    slotType: v.id("slotType"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+    const slotType = await ctx.db.get("slotType", args.slotType);
+    if (slotType === null || slotType.group !== user.group) {
+      throw Error("Invalid slot type");
+    }
+
+    return await ctx.db.patch("slotType", args.slotType, {name: args.name});
+  },
+});
+
+export const deleteSlotTypes = mutation({
+  args: {
+    slotType: v.id("slotType"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+    const slotType = await ctx.db.get("slotType", args.slotType);
+    if (slotType === null || slotType.group !== user.group) {
+      throw Error("Invalid slot type");
+    }
+
+    const slots = await ctx.db.query("slots")
+      .withIndex("by_group_upcoming", q => q.eq("group", user.group))
+      .filter(q => q.eq(q.field("type"), args.slotType))
+      .collect();
+    await Promise.all(slots.map(slot => {
+      return ctx.db.patch("slots", slot._id, {type: undefined});
+    }));
+
+    const counts = await ctx.db.query("performingCount")
+      .withIndex("by_type_user", q => q.eq("type", args.slotType))
+      .collect();
+    await Promise.all(counts.map(count => {
+      return ctx.db.delete("performingCount", count._id);
+    }))
+
+    return await ctx.db.delete("slotType", args.slotType);
+  },
+});
+
+export const slotTypes = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    return await ctx.db.query("slotType").withIndex("by_group", q => q.eq("group", user.group)).collect();
+  },
+});
+
+// Warning: Do not call this function multiple times in the same transaction! The same
+// `performer`, `type` pairs will be created.
+async function updatePerformingCount(
+  ctx: MutationCtx,
+  performer: Id<"users">,
+  type: Id<"slotType">,
+  update: number
+) {
+  const count = await ctx.db.query("performingCount")
+    .withIndex("by_type_user", q => q.eq("type", type).eq("user", performer))
+    .unique();
+  if (count === null) {
+    await ctx.db.insert("performingCount", {
+        type,
+        user: performer,
+        count: update,
+    });
+  } else {
+    await ctx.db.patch("performingCount", count._id, {count: count.count + update });
+  }
+}
+
+
+export type CountData = {
+    _id: Id<"slotType">;
+    counts: Record<Id<"users">, number>;
+    sum: number,
+    name: string;
+};
+export type CountsData = {
+  types: CountData[],
+  users: Doc<"users">[],
+  out_of: number,
+};
+export const countsTable = query({
+  args: {},
+  handler: async (ctx, args): Promise<CountsData> => {
+    const authUser = await getAuthUser(ctx);
+    const users = await ctx.db.query("users")
+      .withIndex("by_group", q => q.eq("group", authUser.group))
+      .collect();
+
+    const types = await ctx.db.query("slotType")
+      .withIndex("by_group", q => q.eq("group", authUser.group))
+      .collect();
+
+    var typesWithCounts: CountData[] = [];
+    for (const type of types) {
+      const rawCounts = await ctx.db.query("performingCount")
+        .withIndex("by_type_user", q => q.eq("type", type._id))
+        .collect();
+      const counts = new Map(rawCounts.map(c => [c.user, c.count]));
+      var sum = 0;
+      for (const c of counts.values()) {
+        sum += c;
+      }
+
+      typesWithCounts.push({
+        counts: Object.fromEntries(counts),
+        sum,
+        _id: type._id,
+        name: type.name,
+      });
+    }
+
+    return {
+      users,
+      out_of: users.length,
+      types: typesWithCounts,
+    };
+  },
+});
+
+export const newUpcomingSlot = mutation({
   args: {},
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
@@ -125,7 +272,7 @@ export const newUpcommingSlot = mutation({
   }
 })
 
-export const updateUpcommingSlot = mutation({
+export const updateUpcomingSlot = mutation({
   args: {
     slot: v.id("slots"),
 
@@ -170,7 +317,7 @@ export const updateUpcommingSlot = mutation({
   }
 })
 
-export const deleteUpcommingSlot = mutation({
+export const deleteUpcomingSlot = mutation({
   args: {
     slot: v.id("slots"),
   },
@@ -189,11 +336,12 @@ export const deleteUpcommingSlot = mutation({
   }
 })
 
-export const copyUpcommingSlots = mutation({
+export const rangeEditUpcomingSlots = mutation({
   args: {
     startRange: v.string(),
     endRange: v.string(),
     moveDays: v.number(),
+    action: v.union(v.literal("move"), v.literal("copy"), v.literal("delete"))
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
@@ -204,7 +352,7 @@ export const copyUpcommingSlots = mutation({
     const startRange = DateTime.fromISO(args.startRange).toUTC().toISO() as string;
     const endRange = DateTime.fromISO(args.endRange).toUTC().toISO() as string;
 
-    let slotsToCopy = await ctx.db.query("slots")
+    let slotsToEdit = await ctx.db.query("slots")
       .withIndex("by_group_upcoming", q => 
         q.eq("group", user.group)
           .eq("upcoming", true)
@@ -212,21 +360,36 @@ export const copyUpcommingSlots = mutation({
           .lt("start", endRange)
       )
       .collect();
-    
 
-    await Promise.all(slotsToCopy.map(slot => {
-      const start = DateTime.fromISO(slot.start).plus({days: args.moveDays}).toUTC().toISO() as string;
-      const end = DateTime.fromISO(slot.end).plus({days: args.moveDays}).toUTC().toISO() as string;
-      return ctx.db.insert("slots", {
-          start,
-          end,
-          upcoming: true,
-          name: slot.name,
-          showTime: slot.showTime,
-          group: user.group,
-      });
-    }));
-        
+    const movedTimes = (slot: Doc<"slots">) => ({
+      start: DateTime.fromISO(slot.start).plus({days: args.moveDays}).toUTC().toISO() as string,
+      end: DateTime.fromISO(slot.end).plus({days: args.moveDays}).toUTC().toISO() as string,
+    });
+    
+    switch (args.action) {
+      case "copy":
+        await Promise.all(slotsToEdit.map(slot => {
+          return ctx.db.insert("slots", {
+              ...movedTimes(slot),
+              upcoming: true,
+              name: slot.name,
+              type: slot.type,
+              showTime: slot.showTime,
+              group: user.group,
+          });
+        }));
+        break;
+      case "move":
+        await Promise.all(slotsToEdit.map(slot => {
+          return ctx.db.patch("slots", slot._id, movedTimes(slot));
+        }));
+        break;
+      case "delete":
+        await Promise.all(slotsToEdit.map(slot => {
+          return ctx.db.delete("slots", slot._id);
+        }));
+        break;
+    }
   }
 });
 
@@ -251,6 +414,15 @@ export const slotsSetPerformer = mutation({
       }
     }
 
+    if (!slot.upcoming && slot.type !== undefined && slot.performer !== args.performer) {
+      if (slot.performer !== undefined) {
+        await updatePerformingCount(ctx, slot.performer, slot.type, -1);
+      }
+      if (args.performer !== undefined) {
+        await updatePerformingCount(ctx, args.performer, slot.type, 1);
+      }
+    }
+
     await ctx.db.patch("slots", args.slot, { performer: args.performer });
   },
 })
@@ -270,7 +442,8 @@ export const publishUpcoming = mutation({
       )
       .collect();
 
-    await Promise.all(slotsToPublish.map(async slot => {
+
+    const pairs = await Promise.all(slotsToPublish.map(async slot => {
       const start = DateTime.fromISO(slot.start).plus({weeks: 1}).toUTC().toISO() as string;
       const end = DateTime.fromISO(slot.end).plus({weeks: 1}).toUTC().toISO() as string;
       await ctx.db.insert("slots", {
@@ -279,6 +452,7 @@ export const publishUpcoming = mutation({
           upcoming: true,
           name: slot.name,
           showTime: slot.showTime,
+          type: slot.type,
           group: user.group,
       });
 
@@ -294,7 +468,31 @@ export const publishUpcoming = mutation({
         return ctx.db.delete("selectedSlots", s._id);
       }));
 
+      if (slot.performer !== undefined && slot.type !== undefined) {
+        // This will be used as the keys for the map bellow, object are compared by ptr so need to
+        // convert to a string. But later in updatePerformingCount we need the id's again so using
+        // `|` to be able to do the split.
+        //
+        // Using the map to sum the counts (instead of just calling updatePerformingCount here) is
+        // needed since the inserts in that function are only done at the end of the transaction =>
+        // next call will not see a new count was already created and multiple of the same id pairs
+        // will exsit.
+        return slot.performer + "|" + slot.type;
+      }
+      return null;
     }));
+
+    let counts = new Map<string, number>();
+    for (const p of pairs) {
+      if (p !== null) {
+        counts.set(p, (counts.get(p) ?? 0) + 1)
+      }
+    }
+
+    for (const [p, c] of counts) {
+      const [performer, type] = p.split("|");
+      updatePerformingCount(ctx, performer as Id<"users">, type as Id<"slotType">, c);
+    }
 
     // TODO: Remove old? slots
   }

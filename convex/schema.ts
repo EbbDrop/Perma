@@ -29,7 +29,7 @@ export default defineSchema({
   slotType: defineTable({
     group: v.id("group"),
     name: v.string(),
-  }),
+  }).index("by_group", ["group"]),
 
   slots: defineTable({
     group: v.id("group"),
@@ -54,4 +54,10 @@ export default defineSchema({
   }).index("by_user", ["user"])
     .index("by_slot", ["slot"])
     .index("by_user_slot", ["user", "slot"]),
+
+  performingCount: defineTable({
+    user: v.id("users"),
+    type: v.id("slotType"),
+    count: v.number(),
+  }).index("by_type_user", ["type", "user"])
 });

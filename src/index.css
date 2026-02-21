@@ -155,6 +155,7 @@ table {
   --background-600: #3c3795;
   --background-700: #2d2970;
   --background-800: #1e1c4a;
+  --background-850: #171538;
   --background-900: #0f0e25;
   --background-950: #070713;
 
@@ -205,8 +206,8 @@ table {
     --color-text-secondary: white;
     --color-text-accent: white;
 
-    --color-bg: var(--background-900);
-    --color-bg-l: var(--background-950);
+    --color-bg: var(--background-850);
+    --color-bg-l: var(--background-900);
     --color-bg-d: var(--background-800);
     --color-bg-primary: var(--primary-200);
     --color-bg-primary-l: var(--primary-300);
@@ -244,10 +245,52 @@ table {
   }
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   --radius: 4px;
   color: var(--color-text);
   font-family: Arial, Helvetica, sans-serif;
+  overflow: hidden;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  padding: 1em;
+  overflow: auto;
+}
+
+h1 {
+  font-size: 2em;
+  margin-bottom: 0.4em;
+}
+
+h2 {
+  font-size: 1.9em;
+  margin-bottom: 0.4em;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0.1em;
+  width: 100%;
+}
+
+th,
+td {
+  background: var(--color-bg);
+  padding: 0.3em;
+  border-radius: var(--radius);
+  width: 7em;
 }
 
 strong {
@@ -315,6 +358,30 @@ nav>*:last-child {
   margin-right: 0em;
 }
 
+.columns-layout {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 3em;
+}
+
+.columns-layout>* {
+  flex: 1;
+}
+
+.small-colum {
+  max-width: 30em;
+}
+
+.table-column {
+  max-width: max-content;
+}
+
+.table-column>* {
+  position: sticky;
+  top: 0;
+}
+
 #sign-out {
   text-align: right;
   margin-left: auto;
@@ -328,10 +395,6 @@ nav>*:last-child {
 
 #sign-out>button:hover {
   background-color: var(--color-bg-secondary-l);
-}
-
-main {
-  padding: 1em;
 }
 
 #right-now {
@@ -381,9 +444,17 @@ main {
   color: var(--color-text-accent);
 }
 
+.admin-slot-edit-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 0.2em;
+  margin-bottom: 0.4em;
+}
+
 .day-title-buttons {
   display: flex;
   flex-direction: row-reverse;
+  gap: 0.2em;
 }
 
 .slot {
@@ -433,4 +504,27 @@ main {
 
 .slot-edit>*:last-child {
   margin-left: auto;
+}
+
+#slot-types {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+}
+
+.table-empty {
+  background-color: inherit;
+}
+
+.table-empty-row {
+  height: 0.5em;
+}
+
+.table-important {
+  font-weight: 900;
+}
+
+.table-important>td {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary)
 }

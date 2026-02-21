@@ -1,24 +1,13 @@
 import { convexAuth } from "@convex-dev/auth/server";
 import {
   ConvexCredentials,
-  ConvexCredentialsUserConfig,
 } from "@convex-dev/auth/providers/ConvexCredentials";
 import {
-  EmailConfig,
-  GenericActionCtxWithAuthConfig,
-  GenericDoc,
-  createAccount,
-  invalidateSessions,
-  modifyAccountCredentials,
   retrieveAccount,
-  signInViaProvider,
 } from "@convex-dev/auth/server";
 import {
-  DocumentByName,
   GenericDataModel,
-  WithoutSystemFields,
 } from "convex/server";
-import { Value } from "convex/values";
 import { Scrypt } from "lucia";
 
 export function idFromGroupAndName(group: string, name: string) {
@@ -28,7 +17,7 @@ export function idFromGroupAndName(group: string, name: string) {
 /**
  * The available options to a {@link Password} provider for Convex Auth.
  */
-export interface PasswordConfig<DataModel extends GenericDataModel> {
+export interface PasswordConfig {
   /**
    * Uniquely identifies the provider, allowing to use
    * multiple different {@link Password} providers.
@@ -46,7 +35,7 @@ export interface PasswordConfig<DataModel extends GenericDataModel> {
  * an email provider to the `verify` option.
  */
 export function Password<DataModel extends GenericDataModel>(
-  config: PasswordConfig<DataModel> = {},
+  config: PasswordConfig = {},
 ) {
   const provider = config.id ?? "password";
   return ConvexCredentials<DataModel>({

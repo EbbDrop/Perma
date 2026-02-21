@@ -1,6 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation, action, QueryCtx, MutationCtx, ActionCtx, internalMutation } from "./_generated/server";
-import { api } from "./_generated/api";
+import { query, mutation, QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
 import { getAuthUserId, createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { idFromGroupAndName } from "./auth";
 import { Id, Doc } from "./_generated/dataModel";
@@ -33,14 +32,14 @@ async function getAuthGroup(ctx: QueryCtx) {
 
 export const allGroups = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     return await ctx.db.query("group").collect();
   },
 });
 
 export const groupInfo = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const group = getAuthGroup(ctx);
     return group;
   },
@@ -165,7 +164,7 @@ export const deleteUser = mutation({
 
 export const user = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     return user;
   },
@@ -173,7 +172,7 @@ export const user = query({
 
 export const users = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     return await ctx.db.query("users").withIndex("by_group", q => q.eq("group", user.group)).collect();
   },
@@ -181,7 +180,7 @@ export const users = query({
 
 export const addSlotTypes = mutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");     
@@ -248,7 +247,7 @@ export const deleteSlotTypes = mutation({
 
 export const slotTypes = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     return await ctx.db.query("slotType").withIndex("by_group", q => q.eq("group", user.group)).collect();
   },
@@ -290,7 +289,7 @@ export type CountsData = {
 };
 export const countsTable = query({
   args: {},
-  handler: async (ctx, args): Promise<CountsData> => {
+  handler: async (ctx): Promise<CountsData> => {
     const authUser = await getAuthUser(ctx);
     const users  = await ctx.db.query("users")
       .withIndex("by_group", q => q.eq("group", authUser.group))
@@ -339,7 +338,7 @@ export const countsTable = query({
 
 export const newUpcomingSlot = mutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");     
@@ -541,9 +540,6 @@ export const autoSetPerformerUpcoming = mutation({
     const slots = await ctx.db.query("slots")
       .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", true))
       .collect();
-    const users = await ctx.db.query("users")
-      .withIndex("by_group", (q) => q.eq("group", user.group))
-      .collect();
     const types = await ctx.db.query("slotType")
       .withIndex("by_group", (q) => q.eq("group", user.group))
       .collect();
@@ -702,7 +698,7 @@ export const slots = query({
 
 export const upcomingSlotsWithSelected = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
 
     const slots = await ctx.db.query("slots")
@@ -736,7 +732,7 @@ export const upcomingSlotsWithSelected = query({
 
 export const waitingOnSelection = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const authUser = await getAuthUser(ctx);
 
     var users = await ctx.db.query("users")
@@ -827,7 +823,7 @@ export const setNote = mutation({
 
 export const note = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     return user.note;
   },
@@ -835,7 +831,7 @@ export const note = query({
 
 export const slotsForSchedule = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
 
     const slots = await ctx.db.query("slots")

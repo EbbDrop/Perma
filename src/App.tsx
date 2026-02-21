@@ -18,13 +18,15 @@ import { CountsData } from "../convex/func";
 export default function App() {
   var isAdmin = false;
   var name = "";
+  var user;
   try {
-    const user = useQuery(api.func.user, {});
-    if (user !== undefined) {
-      isAdmin = user.admin;
-      name = user.name;
-    }
+    user = useQuery(api.func.user, {});
   } catch {}
+
+  if (user !== undefined) {
+    isAdmin = user.admin;
+    name = user.name;
+  }
   
   return (
     <BrowserRouter>
@@ -37,7 +39,7 @@ export default function App() {
             <NavLink to="/admin" end>Admin</NavLink> : null
           }
           <span id="sign-out">
-            {name}
+            <NavLink to="/me" end>{name}</NavLink>
             {" "}
             <SignOutButton/>
           </span>
@@ -48,6 +50,7 @@ export default function App() {
           <Routes>
             <Route index element={<Schedule />}/>
             <Route path="invullen" element={<FillIn />}/>
+            <Route path="me" element={<Me me={user}/>}/>
             <Route path="admin" element={<Admin />}>
               <Route index element={<AdminSetPerformer />} />
               <Route path="slots" element={<><AdminEditSlots /><hr /><h2>Shift soorten</h2><AdminEditTypes /></>} />
@@ -135,6 +138,19 @@ function SignInForm() {
       </form>
     </div>
   );
+}
+
+function Me({me}: {me: Doc<"users">}) {
+  const updateUserPassword = useMutation(api.func.updateUserPassword);
+  return (<>
+    <h2>{me.name}</h2>
+    <button onClick={_ => {
+      const password = window.prompt("Nieuw password");
+      if (password !== null) {
+        updateUserPassword({password});
+      }
+    }}>verander password</button>
+  </>);
 }
 
 function slotStrings(slot: Doc<"slots">) {
@@ -490,7 +506,8 @@ function AdminSetPerformer() {
   const slots = useQuery(api.func.upcomingSlotsWithSelected);
   const counts = useQuery(api.func.countsTable);
   const users = useQuery(api.func.users);
-  if (slots === undefined || counts === undefined || users === undefined) {
+  const waitingOnSelection = useQuery(api.func.waitingOnSelection);
+  if (slots === undefined || counts === undefined || users === undefined || waitingOnSelection === undefined) {
     return <h3>Aan het laden</h3>;
   }
   const countsWith = structuredClone(counts);
@@ -556,7 +573,15 @@ function AdminSetPerformer() {
     }
   }
 
-  return (
+  return (<>
+    {waitingOnSelection.length > 0 && (
+      <div className="waiting-on">
+        {waitingOnSelection.length === 1 ?
+          (<>{waitingOnSelection.map(u => u.name).join(", ")} moet nog invullen.</>) :
+          (<>{waitingOnSelection.map(u => u.name).join(", ")} moeten nog invullen.</>)
+        }
+      </div>
+    )}
     <div className="columns-layout">
       <div className="small-colum">
         <div className="admin-bulk-edit-buttons">
@@ -593,7 +618,7 @@ function AdminSetPerformer() {
         </div>
       </div>
     </div>
-  );
+  </>);
 }
 
 function AdminEditUsers() {

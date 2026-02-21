@@ -720,6 +720,36 @@ export const upcomingSlotsWithSelected = query({
   },
 });
 
+export const waitingOnSelection = query({
+  args: {},
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+
+    var users = await ctx.db.query("users")
+      .withIndex("by_group", q => q.eq("group", authUser.group))
+      .collect();
+
+    var waitingOn: {_id: Id<"users">, name: string}[] = [];
+    for (const user of users) {
+      if (user.note !== undefined || user.assisted) {
+        continue;
+      }
+      const selection = await ctx.db.query("selectedSlots")
+        .withIndex("by_user", q => q.eq("user", user._id))
+        .first();
+      if (selection !== null) {
+        continue;
+      }
+      waitingOn.push({
+        _id: user._id,
+        name: user.name,
+      });
+    }
+
+    return waitingOn;
+  },
+});
+
 export const selectedSlots = query({
   args: {
     userId: v.optional(v.id("users")),

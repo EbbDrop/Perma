@@ -421,7 +421,17 @@ nav>*:last-child {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
   border-radius: var(--radius);
-  font-size: 1.5em;
+  font-size: 1.2em;
+  margin-bottom: 0.5em;
+}
+
+.waiting-on {
+  padding: 0.5em;
+  background-color: var(--color-bg-accent);
+  color: var(--color-text-accent);
+  border-radius: var(--radius);
+  font-size: 1.2em;
+  margin-bottom: 0.5em;
 }
 
 .you>select {
@@ -554,7 +564,7 @@ nav>*:last-child {
 
 .table-important>td {
   background: var(--color-bg-primary);
-  color: var(--color-text-primary)
+  color: var(--color-text-primary);
 }
 
 .notes {

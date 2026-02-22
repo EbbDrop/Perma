@@ -18,12 +18,16 @@ import EtnaImg from "./static/etna.svg?react";
 import LogoLight from "./static/logoLight.svg?react";
 
 export default function App() {
+  const { isAuthenticated } = useConvexAuth();
+
   var isAdmin = false;
   var name = "";
   var user;
-  try {
-    user = useQuery(api.func.user, {});
-  } catch {}
+  if (isAuthenticated) {
+    try {
+      user = useQuery(api.func.user, {});
+    } catch {}
+  }
 
   if (user !== undefined) {
     isAdmin = user.admin;
@@ -104,12 +108,7 @@ function SignOutButton() {
   return (
     <>
       {isAuthenticated && (
-        <button
-          className="bg-slate-200 dark:bg-slate-800 text-dark dark:text-light rounded-md px-2 py-1"
-          onClick={() => void signOut()}
-        >
-          Log uit
-        </button>
+        <button onClick={() => void signOut()}>Log uit</button>
       )}
     </>
   );
@@ -163,28 +162,43 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
   if (me === undefined) {
     return <h3>Aan het laden</h3>;
   }
+  const updateUserName = useMutation(api.func.updateUserName);
   const updateUserPassword = useMutation(api.func.updateUserPassword);
 
   const baseUrl = import.meta.env.VITE_CONVEX_SITE_URL as string
   const calendarUrl = `${baseUrl}/calendar.ics?group=${me.group}&user=${me._id}`;
   const calendarAllUrl = `${calendarUrl}&all=true`;
 
-  return (<>
-    <h2>{me.name}</h2>
-    <button onClick={_ => {
-      const password = window.prompt("Nieuw password");
-      if (password !== null) {
-        updateUserPassword({password});
-      }
-    }}>verander password</button>
-    <br/>
-    <hr/>
-    <h4>Persoonlijke kalender url:</h4>
-    <div className="url-box">{calendarUrl}</div>
-    <br />
-    <h4>Algemene kalender url:</h4>
-    <div className="url-box">{calendarAllUrl}</div>
-  </>);
+  return (
+    <div className="main-layout columns-layout">
+      <div className="small-colum">
+        <div className="edit-list">
+          <label>
+            Naam:
+            <input
+              onBlur={e => updateUserName({
+                  name: e.target.value,
+              })}
+              defaultValue={me.name}
+            />
+          </label>
+          <button onClick={_ => {
+            const password = window.prompt("Nieuw password");
+            if (password !== null) {
+              updateUserPassword({password});
+            }
+          }}>verander password</button>
+        </div>
+        <br/>
+        <hr/>
+        <h4>Persoonlijke kalender url:</h4>
+        <div className="url-box">{calendarUrl}</div>
+        <br />
+        <h4>Algemene kalender url:</h4>
+        <div className="url-box">{calendarAllUrl}</div>
+      </div>
+    </div>
+  );
 }
 
 function slotStrings(slot: Doc<"slots">) {
@@ -193,7 +207,7 @@ function slotStrings(slot: Doc<"slots">) {
 
     const dayString = start.toLocaleString({ weekday: "long", day: "2-digit", month: "2-digit" });
     
-    var fullName = slot.name;
+    var fullName = <span>{slot.name}</span>;
     if (slot.showTime) {
       const startHour = start.toLocaleString(DateTime.TIME_SIMPLE);
       var endHour;
@@ -203,7 +217,7 @@ function slotStrings(slot: Doc<"slots">) {
         endHour = end.toLocaleString({ weekday: 'short', hour: '2-digit', minute: '2-digit' });
       }
 
-      fullName += ` (${startHour} tot ${endHour})`
+      fullName = <span>{slot.name} <span className="prefere-no-break">({startHour} tot {endHour})</span></span>
     }
 
     return {start, end, dayString, fullName};
@@ -702,6 +716,7 @@ function AdminEditUsers() {
   const addUser = useMutation(api.func.addUser);
   const updateUser = useMutation(api.func.updateUser);
   const updateUserPassword = useMutation(api.func.updateUserPassword);
+  const updateUserName = useMutation(api.func.updateUserName);
   const deleteUser = useMutation(api.func.deleteUser);
 
   const selfUser = useQuery(api.func.user);
@@ -713,8 +728,15 @@ function AdminEditUsers() {
   var htmlData = [];
   for (const user of users) {
     htmlData.push(<div>
-      <h3>{user.name}</h3>
       <div key={user._id} className="edit-row">
+        <input
+          onBlur={e => updateUserName({
+            user: user._id,
+            name: e.target.value,
+          })}
+          type="text"
+          defaultValue={user.name}
+        />
         <label>
           Omkaderde: 
           <input
@@ -752,29 +774,31 @@ function AdminEditUsers() {
   }
 
   return (
-    <div className="main-layout">
-      <div className="edit-list">
-        {...htmlData}
+    <div className="main-layout columns-layout">
+      <div className="small-colum">
+        <div className="edit-list">
+          {...htmlData}
+        </div>
+        <br/>
+        <hr/>
+        <form
+          className="edit-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const name = formData.get("name");
+            const password = formData.get("password");
+            if (name !== null && password !== null) {
+              void addUser({name: name.toString(), password: password.toString()})
+            }
+            (e.target as HTMLFormElement).reset()
+          }}
+        >
+          <input type="text" name="name" required placeholder="Naam" />
+          <input type="text" name="password" required placeholder="Password" />
+          <button type="submit">Voeg kot genoot toe</button>
+        </form>
       </div>
-      <br/>
-      <br/>
-      <form
-        className="edit-row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const formData = new FormData(e.target as HTMLFormElement);
-          const name = formData.get("name");
-          const password = formData.get("password");
-          if (name !== null && password !== null) {
-            void addUser({name: name.toString(), password: password.toString()})
-          }
-          (e.target as HTMLFormElement).reset()
-        }}
-      >
-        <input type="text" name="name" required placeholder="Naam" />
-        <input type="text" name="password" required placeholder="Password" />
-        <button type="submit">Voeg kot genoot toe</button>
-      </form>
     </div>
   );
 }

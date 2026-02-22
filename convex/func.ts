@@ -131,6 +131,50 @@ export const updateUserPassword = mutation({
   },
 });
 
+export const updateUserName = mutation({
+  args: {
+    user: v.optional(v.id("users")),
+    name: v.string()
+  },
+
+  handler: async (ctx, args) => {
+    const authUser = await getAuthUser(ctx);
+    if (args.user !== undefined && !authUser.admin) {
+      throw Error("Need to be admin to modify other persons name");
+    }
+
+    var user = authUser;
+    if (args.user !== undefined) {
+      const otherUser = await ctx.db.get("users", args.user);
+      if (otherUser === null) {
+        throw Error("Invalid user");
+      }
+      user = otherUser;
+    }
+
+    const oldId = idFromGroupAndName(user.group, user.name);
+    const newId = idFromGroupAndName(user.group, args.name);
+    const newIdAcount = await ctx.db.query("authAccounts")
+      .withIndex("providerAndAccountId", q => q.eq("provider", "password")
+      .eq("providerAccountId", newId))
+      .unique();
+    if (newIdAcount !== null) {
+      throw Error("User with name already exists");
+    }
+
+    const account = await ctx.db.query("authAccounts")
+      .withIndex("providerAndAccountId", q => q.eq("provider", "password")
+      .eq("providerAccountId", oldId))
+      .unique();
+    if (account === null) {
+      throw Error("Invalid user");
+    }
+
+    await ctx.db.patch("authAccounts", account?._id, {providerAccountId: newId});
+    await ctx.db.patch("users", user._id, {name: args.name});
+  },
+});
+
 export const deleteUser = mutation({
   args: {
     user: v.id("users"),

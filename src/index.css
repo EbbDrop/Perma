@@ -559,6 +559,7 @@ footer {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
+  align-items: center;
   gap: 0.3em;
 }
 
@@ -648,4 +649,8 @@ footer {
 
   white-space: nowrap;
   margin-block: 0.3em;
+}
+
+.prefere-no-break {
+  display: inline-block;
 }

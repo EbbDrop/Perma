@@ -14,6 +14,7 @@ import { BrowserRouter, NavLink, Outlet, Route, Routes } from "react-router";
 import { DateTime } from "luxon";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { CountsData } from "../convex/func";
+import EtnaImg from "./static/etna.svg?react";
 
 export default function App() {
   var isAdmin = false;
@@ -31,7 +32,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <nav>
-        <img src="/etna.svg" className="logo"/>
+        <EtnaImg className="logo"/>
         <Authenticated>
           <NavLink to="/" end>Schema</NavLink>
           <NavLink to="/invullen" end>Invullen</NavLink>

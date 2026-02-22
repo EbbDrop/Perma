@@ -275,6 +275,71 @@ async function updatePerformingCount(
   }
 }
 
+export const bulkEditCounts = mutation({
+  args: {
+    updates: v.array(v.object({
+      user: v.id("users"),
+      type: v.id("slotType"),
+      update: v.number(),
+    }))
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+    const rawTypes = await ctx.db.query("slotType")
+      .withIndex("by_group", q => q.eq("group", user.group))
+      .collect();
+    const types = new Set(rawTypes.map(t => t._id));
+
+    const rawUsers = await ctx.db.query("users")
+      .withIndex("by_group", q => q.eq("group", user.group))
+      .collect();
+    const users = new Set(rawUsers.map(u => u._id));
+
+    for (const {user, type, update} of args.updates) {
+      if (!types.has(type)) {
+        throw Error(`invlid type: ${type}`);
+      }
+      if (!users.has(user)) {
+        throw Error(`invlid user: ${user}`);
+      }
+
+      updatePerformingCount(ctx, user, type, update);
+    }
+  },
+})
+
+export const transferCounts = mutation({
+  args: {
+    fromType: v.id("slotType"),
+    toType: v.id("slotType"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+    const fromType = await ctx.db.get("slotType", args.fromType);
+    if (fromType === null) {
+      throw Error("Invlid fromType");
+    }
+    const toType = await ctx.db.get("slotType", args.toType);
+    if (toType === null) {
+      throw Error("Invlid toType");
+    }
+
+    const counts = await ctx.db.query("performingCount")
+      .withIndex("by_type_user", q => q.eq("type", args.fromType))
+      .collect();
+
+    for (const count of counts) {
+      updatePerformingCount(ctx, count.user, args.fromType, -count.count);
+      updatePerformingCount(ctx, count.user, args.toType, count.count);
+    }
+  },
+})
 
 export type CountData = {
     _id: Id<"slotType">;

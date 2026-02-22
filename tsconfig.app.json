@@ -22,6 +22,8 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
+    "types": ["vite-plugin-svgr/client"],
+
     /* Import paths */
     "paths": {
       "@/*": ["./src/*"]

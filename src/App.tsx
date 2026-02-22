@@ -191,11 +191,13 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
         </div>
         <br/>
         <hr/>
-        <h4>Persoonlijke kalender url:</h4>
-        <div className="url-box">{calendarUrl}</div>
-        <br />
-        <h4>Algemene kalender url:</h4>
-        <div className="url-box">{calendarAllUrl}</div>
+        <div className="make-it-behave">
+          <h4>Persoonlijke kalender url:</h4>
+          <div className="url-box">{calendarUrl}</div>
+          <br />
+          <h4>Algemene kalender url:</h4>
+          <div className="url-box">{calendarAllUrl}</div>
+        </div>
       </div>
     </div>
   );

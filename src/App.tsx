@@ -15,6 +15,7 @@ import { DateTime } from "luxon";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { CountsData } from "../convex/func";
 import EtnaImg from "./static/etna.svg?react";
+import LogoLight from "./static/logoLight.svg?react";
 
 export default function App() {
   var isAdmin = false;
@@ -46,44 +47,53 @@ export default function App() {
           </span>
         </Authenticated>
       </nav>
-      <main>
-        <Authenticated>
-          <Routes>
-            <Route index element={<>
-              <title>Perma | Schema</title>
-              <Schedule />
-            </>}/>
-            <Route path="invullen" element={<>
-              <title>Perma | Invullen</title>
-              <FillIn />
-            </>}/>
-            <Route path="me" element={<>
-              <title>Perma | {name}</title>
-              <Me me={user}/>
-            </>}/>
-            <Route path="admin" element={<Admin />}>
+      <div id="scroll-box">
+        <main>
+          <Authenticated>
+            <Routes>
               <Route index element={<>
-                <title>Perma | Maak Schema</title>
-                <AdminSetPerformer />
-              </>} />
-              <Route path="slots" element={<>
-                <title>Perma | Edit Shifts</title>
-                <AdminEditSlots />
-                <hr />
-                <h2>Shift soorten</h2>
-                <AdminEditTypes />
-              </>} />
-              <Route path="users" element={<>
-                <title>Perma | Kot genoten</title>
-                <AdminEditUsers />
-              </>} />
-            </Route>
-          </Routes>
-        </Authenticated>
-        <Unauthenticated>
-          <SignInForm />
-        </Unauthenticated>
-      </main>
+                <title>Perma | Schema</title>
+                <Schedule />
+              </>}/>
+              <Route path="invullen" element={<>
+                <title>Perma | Invullen</title>
+                <FillIn />
+              </>}/>
+              <Route path="me" element={<>
+                <title>Perma | {name}</title>
+                <Me me={user}/>
+              </>}/>
+              <Route path="admin" element={<Admin />}>
+                <Route index element={<>
+                  <title>Perma | Maak Schema</title>
+                  <AdminSetPerformer />
+                </>} />
+                <Route path="slots" element={<div className="main-layout">
+                  <title>Perma | Sifts bewerken</title>
+                  <AdminEditSlots />
+                  <hr />
+                  <h2>Shift soorten</h2>
+                  <AdminEditTypes />
+                </div>} />
+                <Route path="users" element={<>
+                  <title>Perma | Kot genoten</title>
+                  <AdminEditUsers />
+                </>} />
+              </Route>
+            </Routes>
+          </Authenticated>
+          <Unauthenticated>
+            <SignInForm />
+          </Unauthenticated>
+        </main>
+        <footer>
+          Gemaakt door <a href="https://ebbdrop.com">
+            Ebbe
+            <LogoLight className="logo"/>
+            Steenhoudt
+          </a>
+        </footer>
+      </div>
     </ BrowserRouter>
   );
 }
@@ -98,7 +108,7 @@ function SignOutButton() {
           className="bg-slate-200 dark:bg-slate-800 text-dark dark:text-light rounded-md px-2 py-1"
           onClick={() => void signOut()}
         >
-          Sign out
+          Log uit
         </button>
       )}
     </>
@@ -111,7 +121,7 @@ function SignInForm() {
   const { signIn } = useAuthActions();
   const [error, setError] = useState<string | null>(null);
   return (
-    <div>
+    <div className="main-layout">
       <form
         id="login"
         onSubmit={(e) => {
@@ -329,7 +339,7 @@ function Schedule() {
     rightNowHtml = (<div id="right-now">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{e.performerName}</strong></span>)]).slice(1)}</div>);
   }
 
-  return (<>
+  return (<div className="main-layout">
     {rightNowHtml}
     <div className="columns-layout">
       <div className="schedule-container small-colum">
@@ -342,7 +352,7 @@ function Schedule() {
         </div>
       </div>
     </div>
-  </>);
+  </div>);
 }
 
 function userToOption(user: {_id: Id<"users">, name: string}): ReactElement {
@@ -640,7 +650,7 @@ function AdminSetPerformer() {
     }
   }
 
-  return (<>
+  return (<div className="main-layout">
     {waitingOnSelection.length > 0 && (
       <div className="waiting-on">
         {waitingOnSelection.length === 1 ?
@@ -685,7 +695,7 @@ function AdminSetPerformer() {
         </div>
       </div>
     </div>
-  </>);
+  </div>);
 }
 
 function AdminEditUsers() {
@@ -742,7 +752,7 @@ function AdminEditUsers() {
   }
 
   return (
-    <div>
+    <div className="main-layout">
       <div className="edit-list">
         {...htmlData}
       </div>
@@ -840,7 +850,7 @@ function FillIn() {
     </label>);
   }
 
-  return (<div className="columns-layout">
+  return (<div className="columns-layout main-layout">
     <div className="schedule-container small-colum">
      {...htmlData}
     </div>

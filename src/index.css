@@ -263,13 +263,6 @@ body {
   flex-direction: column;
 }
 
-main {
-  flex: 1;
-  padding: 1em;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
 h1 {
   font-size: 2em;
   margin-bottom: 0.4em;
@@ -365,6 +358,7 @@ a:hover {
 nav {
   padding: 1em;
   background-color: var(--color-bg);
+  color: var(--color-text);
   display: flex;
   align-items: center;
 }
@@ -379,6 +373,33 @@ nav>.active {
 
 nav>*:last-child {
   margin-right: 0em;
+}
+
+.main-layout {
+  margin: 1em;
+}
+
+#scroll-box {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+}
+
+main {
+  flex: 1;
+}
+
+footer {
+  margin-top: 3em;
+  flex: 0;
+  padding: 1em;
+  background-color: var(--color-bg-accent);
+  color: var(--color-text-accent);
 }
 
 .columns-layout {
@@ -403,7 +424,7 @@ nav>*:last-child {
 
 .table-column>* {
   position: sticky;
-  top: 0;
+  top: 1em;
 }
 
 #sign-out {
@@ -590,6 +611,7 @@ nav>*:last-child {
 .logo {
   height: 3em;
   width: 3em;
+  vertical-align: -1em;
 }
 
 #login {

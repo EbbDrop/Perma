@@ -153,6 +153,11 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
     return <h3>Aan het laden</h3>;
   }
   const updateUserPassword = useMutation(api.func.updateUserPassword);
+
+  const baseUrl = import.meta.env.VITE_CONVEX_SITE_URL as string
+  const calendarUrl = `${baseUrl}/calendar.ics?group=${me.group}&user=${me._id}`;
+  const calendarAllUrl = `${calendarUrl}&all=true`;
+
   return (<>
     <h2>{me.name}</h2>
     <button onClick={_ => {
@@ -161,6 +166,13 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
         updateUserPassword({password});
       }
     }}>verander password</button>
+    <br/>
+    <hr/>
+    <h4>Persoonlijke kalender url:</h4>
+    <div className="url-box">{calendarUrl}</div>
+    <br />
+    <h4>Algemene kalender url:</h4>
+    <div className="url-box">{calendarAllUrl}</div>
   </>);
 }
 
@@ -529,7 +541,7 @@ function AdminEditTypes() {
     <span>Sift soorten worden gebruikt om de totaal opgenomen siften te bereken. Eén totaal per shift soort per persoon. <strong>Pas op met het verwijderen van een shift soort, all total van die soort gaan dan ook verloren.</strong></span>
     <br/>
     <br/>
-    <div id="edit-list">{...htmlData}</div>
+    <div className="edit-list">{...htmlData}</div>
     <br/>
     <button onClick={_ => addType()}>Voeg shift toe</button>
   </>);

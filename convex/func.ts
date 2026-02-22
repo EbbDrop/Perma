@@ -894,28 +894,43 @@ export const note = query({
   },
 })
 
-export const slotsForSchedule = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getAuthUser(ctx);
-
+export const slotsForCalendar = query({
+  args: {
+    group: v.id("group"),
+    user: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get("users", args.user);
+    if (user === null || user.group !== args.group) {
+      throw Error("Invalid user");
+    }
+    
     const slots = await ctx.db.query("slots")
       .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", false))
       .collect();
 
     const slotsWithUsers = slots.map(async (slot) => {
-      var performer_user = null;
+      var performerUser = null;
       if (slot.performer !== undefined) {
-        performer_user = await ctx.db.get("users", slot.performer);
+        const rawUser = await ctx.db.get("users", slot.performer);
+        if (rawUser !== null) {
+          performerUser = {
+            _id: rawUser._id,
+            name: rawUser.name,
+          }
+        }
       }
 
       return {
-        performer_user,
+        performerUser,
         is_you: slot.performer === user._id,
         ...slot,
       };
     });
 
-    return await Promise.all(slotsWithUsers);
+    return {
+      slots: await Promise.all(slotsWithUsers),
+      you: user,
+    };
   },
 });

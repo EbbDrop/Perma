@@ -37,7 +37,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <nav>
-        <EtnaImg className="logo"/>
+        <EtnaImg className="logo" role="presentation"/>
         <Authenticated>
           <NavLink to="/" end>Schema</NavLink>
           <NavLink to="/invullen" end>Invullen</NavLink>
@@ -64,7 +64,7 @@ export default function App() {
                 <FillIn />
               </>}/>
               <Route path="me" element={<>
-                <title>Perma | {name}</title>
+                <title>Perma | Ik</title>
                 <Me me={user}/>
               </>}/>
               <Route path="admin" element={<Admin />}>
@@ -87,13 +87,14 @@ export default function App() {
             </Routes>
           </Authenticated>
           <Unauthenticated>
+                <title>Perma | Log in</title>
             <SignInForm />
           </Unauthenticated>
         </main>
         <footer>
           Gemaakt door <a href="https://ebbdrop.com">
             Ebbe
-            <LogoLight className="logo"/>
+            <LogoLight className="logo" role="presentation"/>
             Steenhoudt
           </a>
         </footer>
@@ -244,7 +245,7 @@ function CountsTable({ data }: { data: CountsData }) {
     <table>
       <thead>
         <tr>
-          <th className="table-empty"></th>
+          <th className="table-empty" role="presentation"></th>
           {...data.types.map(t => (<th>
             {t.name}
           </th>))}
@@ -322,7 +323,7 @@ function Schedule() {
 
     const you = slot.performer === user._id;
 
-    htmlData.push(<div key={slot._id} className={"slot" + (you ? " you" : "")}>
+    htmlData.push(<label key={slot._id} className={"slot" + (you ? " you" : "")}>
         {fullName}
         <select
           onChange={event => {
@@ -339,10 +340,10 @@ function Schedule() {
           }}
           value={slot.performer ?? ""}
         >
-          <option value=""></option>
+          <option value="" aria-label="Niemand"></option>
           {...users.map(u => userToOption(u))}
         </select>
-    </div>);
+    </label>);
   }
   if (htmlData.length === 0) {
     htmlData.push(<h3>(Nog) geen shiften</h3>);
@@ -350,9 +351,9 @@ function Schedule() {
 
   var rightNowHtml = null;
   if (rightNow.length === 1) {
-    rightNowHtml = (<div id="right-now">Heeft nu perma: <strong className="right-now-name">{rightNow[0].performerName}</strong> ({rightNow[0].slotName})</div>);
+    rightNowHtml = (<div id="right-now" role="note">Heeft nu perma: <strong className="right-now-name">{rightNow[0].performerName}</strong> ({rightNow[0].slotName})</div>);
   } else if (rightNow.length > 1) {
-    rightNowHtml = (<div id="right-now">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{e.performerName}</strong></span>)]).slice(1)}</div>);
+    rightNowHtml = (<div id="right-now" role="note">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{e.performerName}</strong></span>)]).slice(1)}</div>);
   }
 
   return (<div className="main-layout">
@@ -490,7 +491,7 @@ function AdminEditSlots() {
       <label>
         Shift soort: 
         <select onChange={onChange("type", "id")} value={slot.type ?? ""}>
-          <option value="">--</option>
+          <option value="" aria-label="Niemand">--</option>
           {...types.map(t => <option value={t._id}>{t.name}</option>)}
         </select>
       </label>
@@ -593,6 +594,8 @@ function AdminSetPerformer() {
       local_store.setQuery(api.func.upcomingSlotsWithSelected, {}, slots);
     });
 
+  const [disablePublish, setDisablePublish] = useState(false);
+
   const slots = useQuery(api.func.upcomingSlotsWithSelected);
   const counts = useQuery(api.func.countsTable);
   const users = useQuery(api.func.users);
@@ -644,7 +647,7 @@ function AdminSetPerformer() {
           }}
           value={slot.performer ?? ""}
         >
-          <option value=""></option>
+          <option value="" aria-label="Niemand"></option>
           <option disabled>-- kunnen --</option>
           {...slot.selected_users.map(u => userToOption(u))}
           <option disabled>-- kunnen NIET --</option>
@@ -677,6 +680,18 @@ function AdminSetPerformer() {
     )}
     <div className="columns-layout">
       <div className="small-colum">
+        <p>
+          Maak hier het volgende schema. Kies zelf personen voor elke shift of gebruik één van de
+          AutoFill™ knoppen hieronder om automatisch de personen die kunnen en de minste shifts hebben
+          te kiezen.
+        </p>
+        <br />
+        <p>
+          De selectie wordt automatisch opgeslagen en gedeeld met de andere perma
+          verantwoordelijken. Gebruik de "publiceer" knop vanonder om het schema te delen met de
+          rest van het kot.
+        </p>
+        <br />
         <div className="admin-bulk-edit-buttons">
           <button onClick={_ => autoSetPerformerUpcoming({
             replace: true,
@@ -689,7 +704,16 @@ function AdminSetPerformer() {
           {...htmlData}
         </div>
         <hr/>
-        <button onClick={_ => publishUpcoming({now: DateTime.now().toISO()})} id="publish">Publiceer</button>
+        <button
+          onClick={_ => {
+            setDisablePublish(true);
+            publishUpcoming({now: DateTime.now().toISO()})}
+          }
+          id="publish"
+          disabled={disablePublish}
+        >
+          Publiceer
+        </button>
       </div>
       <div className="table-column">
         <div>
@@ -853,6 +877,7 @@ function FillIn() {
   var htmlData = [];
   var lastDayString = undefined;
 
+  var filledIn = note !== null;
   for (const slot of slots) {
     const { start, dayString, fullName } = slotStrings(slot);
 
@@ -863,6 +888,7 @@ function FillIn() {
     }
 
     const checked = selectedSlots.includes(slot._id);
+    filledIn ||= checked;
 
     htmlData.push(<label key={slot._id} className="slot fill-in-slot">
         {fullName}
@@ -877,20 +903,37 @@ function FillIn() {
   }
 
   return (<div className="columns-layout main-layout">
-    <div className="schedule-container small-colum">
-     {...htmlData}
+    <div className="small-colum">
+      <p>
+        Gelieve alle momenten aan te duiden wanneer je permanentie kan opnemen. Jou selectie zal
+        automatish worden opgeslagen.
+      </p>
+        <br/>
+      <div className="schedule-container">
+       {...htmlData}
+      </div>
+      {filledIn && <>
+        <hr/>
+        <p>
+          Bedankt voor het invullen, uw keuze is opgeslagen!
+        </p>
+      </>}
     </div>
     <div className="table-column">
       <div>
         <h2>Opmerkingen</h2>
-        <textarea
-          className="notes"
-          rows={5}
-          defaultValue={note ?? undefined}
-          onBlur={e => setNote({note: e.target.value})}
-          placeholder="Opmerkingen voor de perma verantwoordelijken? Zet ze hier!"
-        >
-        </textarea>
+        <label>
+          Opmerkingen voor de perma verantwoordelijken? Zet ze hier!
+          <br />
+          <textarea
+            className="notes"
+            rows={5}
+            defaultValue={note ?? undefined}
+            onBlur={e => setNote({note: e.target.value})}
+            placeholder="..."
+          >
+          </textarea>
+        </label>
         <br />
         <br />
         <h2>Overzicht</h2>

@@ -23,9 +23,9 @@ import loadingBlack from "./static/loadingBlack.png";
 function Loading() {
   return (<div className="loading-container">
     <div className="loading" aria-label="loading animation">
-      <picture aria-hiden="true">
+      <picture>
         <source srcSet={loadingWhite}  media="(prefers-color-scheme: dark)"/>
-        <img src={loadingBlack} />
+        <img src={loadingBlack} role="presentation"/>
       </picture>
     </div>
     <h3>Aan het laden</h3>

@@ -10,7 +10,7 @@ import {
 } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
+import { ChangeEvent, ReactElement, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router";
 import { DateTime } from "luxon";
 import { Doc, Id } from "../convex/_generated/dataModel";

@@ -315,6 +315,7 @@ button:active {
 }
 
 input {
+  font-weight: inherit;
   border: none;
   border-radius: var(--radius);
   padding: 0.5em;
@@ -323,6 +324,7 @@ input {
 }
 
 select {
+  font-weight: inherit;
   border: none;
   border-radius: var(--radius);
   padding: 0.5em;

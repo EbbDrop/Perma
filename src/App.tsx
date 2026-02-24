@@ -327,8 +327,8 @@ function Schedule() {
       htmlData.push(<h3 className="day-title">{dayString} {farDateWarning(start)}</h3>);
     }
 
-    const isHappeningNow = start <= now && now <= end;
-    if (isHappeningNow && slot.performer !== undefined && slot.showTime) {
+    const isHappeningNow = start <= now && now <= end && slot.showTime;
+    if (isHappeningNow && slot.performer !== undefined) {
       const performer = users.find(u => u._id == slot.performer);
 
       rightNow.push({

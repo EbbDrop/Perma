@@ -327,7 +327,8 @@ function Schedule() {
       htmlData.push(<h3 className="day-title">{dayString} {farDateWarning(start)}</h3>);
     }
 
-    if (start <= now && now <= end && slot.performer !== undefined && slot.showTime) {
+    const isHappeningNow = start <= now && now <= end;
+    if (isHappeningNow && slot.performer !== undefined && slot.showTime) {
       const performer = users.find(u => u._id == slot.performer);
 
       rightNow.push({
@@ -339,7 +340,7 @@ function Schedule() {
     const you = slot.performer === user._id;
 
     htmlData.push(
-      <label key={slot._id} className={"slot" + (you ? " you" : "")}>
+      <label key={slot._id} className={"slot" + (you ? " you" : "") + (isHappeningNow ? " now" : "")}>
         {fullName}
         <select
           onChange={event => {

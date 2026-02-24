@@ -194,7 +194,6 @@ table {
   --accent-800: #4a1c27;
   --accent-900: #250e14;
   --accent-950: #13070a;
-
 }
 
 @media (prefers-color-scheme: dark) {
@@ -361,19 +360,15 @@ nav {
   display: flex;
   align-items: center;
   overflow-x: auto;
+  gap: 1em;
 }
 
 nav>* {
   min-width: fit-content;
-  margin-right: 1em;
 }
 
-nav>.active {
+.active {
   font-weight: 900;
-}
-
-nav>*:last-child {
-  margin-right: 0em;
 }
 
 .main-layout {
@@ -430,7 +425,6 @@ footer {
 #sign-out {
   text-align: right;
   margin-left: auto;
-  justify-self: auto;
   display: flex;
   align-items: center;
   gap: 0.3em;
@@ -466,6 +460,14 @@ footer {
 .you>select {
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
+}
+
+.now {
+  font-weight: 900;
+}
+
+.now>span::before {
+  content: "▶ ";
 }
 
 .schedule-container {

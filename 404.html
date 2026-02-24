@@ -32,16 +32,17 @@
       var pathSegmentsToKeep = 0;
 
       var l = window.location;
-      l.replace(
-        l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-        l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' +
-        l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
-        (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-        l.hash
-      );
+      <!-- l.replace( -->
+        <!-- l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') + -->
+        <!-- l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?/' + -->
+        <!-- l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') + -->
+        <!-- (l.search ? '&' + l.search.slice(1).replace(/&/g, '~and~') : '') + -->
+        <!-- l.hash -->
+      <!-- ); -->
 
     </script>
   </head>
-  <body style="background-color: black;">
+  <body>
+    <div id="root" role="none"><nav>SVG HERE</nav><div id="scroll-box"><main><div class="loading-container"><div class="loading" aria-label="loading animation"><picture aria-hiden="true"><source srcset="/src/static/loadingWhite.png" media="(prefers-color-scheme: dark)"><img src="/src/static/loadingBlack.png"></picture></div><h3>Aan het laden</h3></div></main><footer>Gemaakt door <a href="https://ebbdrop.com">Ebbe<svg>OTHER svg here</svg>Steenhoudt</a></footer></div></div>
   </body>
 </html>

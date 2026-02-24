@@ -2,6 +2,7 @@
 
 import {
   Authenticated,
+  AuthLoading,
   Unauthenticated,
   useConvexAuth,
   useMutation,
@@ -16,6 +17,20 @@ import { Doc, Id } from "../convex/_generated/dataModel";
 import { CountsData } from "../convex/func";
 import EtnaImg from "./static/etna.svg?react";
 import LogoLight from "./static/logoLight.svg?react";
+import loadingWhite from "./static/loadingWhite.png";
+import loadingBlack from "./static/loadingBlack.png";
+
+function Loading() {
+  return (<div className="loading-container">
+    <div className="loading" aria-label="loading animation">
+      <picture aria-hiden="true">
+        <source srcSet={loadingWhite}  media="(prefers-color-scheme: dark)"/>
+        <img src={loadingBlack} />
+      </picture>
+    </div>
+    <h3>Aan het laden</h3>
+  </div>)
+}
 
 export default function App() {
   const { isAuthenticated } = useConvexAuth();
@@ -90,6 +105,9 @@ export default function App() {
                 <title>Perma | Log in</title>
             <SignInForm />
           </Unauthenticated>
+          <AuthLoading>
+            <Loading />
+          </AuthLoading>
         </main>
         <footer>
           Gemaakt door <a href="https://ebbdrop.com">
@@ -161,7 +179,7 @@ function SignInForm() {
 
 function Me({me}: {me: Doc<"users"> | undefined}) {
   if (me === undefined) {
-    return <h3>Aan het laden</h3>;
+    return <Loading />;
   }
   const updateUserName = useMutation(api.func.updateUserName);
   const updateUserPassword = useMutation(api.func.updateUserPassword);
@@ -298,7 +316,7 @@ function Schedule() {
   const counts = useQuery(api.func.countsTable, {});
   const slots = useQuery(api.func.slots, {upcoming: false});
   if (slots === undefined || user === undefined || users === undefined || counts === undefined) {
-    return <h3>Aan het laden</h3>;
+    return <Loading />;
   }
 
   var rightNow = [];
@@ -419,7 +437,7 @@ function AdminEditSlots() {
   const types = useQuery(api.func.slotTypes, {});
   const slots = useQuery(api.func.slots, {upcoming: true});
   if (slots === undefined || types === undefined) {
-    return <h3>Aan het laden</h3>;
+    return <Loading />;
   }
 
   var htmlDataSlots = [];
@@ -550,7 +568,7 @@ function AdminEditTypes() {
 
   const types = useQuery(api.func.slotTypes, {});
   if (types === undefined) {
-    return <h3>Aan het laden</h3>;
+    return <Loading />;
   }
 
   var htmlData = [];
@@ -601,7 +619,7 @@ function AdminSetPerformer() {
   const users = useQuery(api.func.users);
   const waitingOnSelection = useQuery(api.func.waitingOnSelection);
   if (slots === undefined || counts === undefined || users === undefined || waitingOnSelection === undefined) {
-    return <h3>Aan het laden</h3>;
+    return <Loading />;
   }
   const countsWith = structuredClone(counts);
 
@@ -748,7 +766,7 @@ function AdminEditUsers() {
   const selfUser = useQuery(api.func.user);
   const users = useQuery(api.func.users);
   if (selfUser === undefined || users === undefined) {
-    return <h3>Aan het laden</h3>;
+    return <Loading />;
   }
 
   var htmlData = [];
@@ -868,7 +886,7 @@ function FillIn() {
   const counts = useQuery(api.func.countsTable);
   const note = useQuery(api.func.note);
   if (slots === undefined || selectedSlots == undefined || counts == undefined || note === undefined) {
-    return <h3>Aan het laden</h3>;
+    return <Loading />;
   }
   if (slots.length === 0) {
     return <h3>Geen perma nodig</h3>;

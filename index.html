@@ -11,7 +11,17 @@
     <link rel="stylesheet" href="/src/index.css" />
   </head>
   <body>
-    <div id="root" role="none"></div>
+    <div id="root" role="none">
+      <div class="loading-container">
+        <div class="loading" aria-label="loading animation">
+          <picture aria-hiden="true">
+            <source srcset="./src/static/loadingWhite.png"  media="(prefers-color-scheme: dark)"/>
+            <img src="./src/static/loadingBlack.png" />
+          </picture>
+        </div>
+        <h3>Aan het laden</h3>
+      </div>
+    </div>
     <script type="text/javascript">
       // Single Page Apps for GitHub Pages
       // MIT License

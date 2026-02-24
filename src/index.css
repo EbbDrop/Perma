@@ -685,3 +685,32 @@ footer {
 .make-it-behave {
   display: grid;
 }
+
+.loading-container {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  justify-content: center;
+  align-content: center;
+}
+
+.loading {
+  width: 10em;
+  height: 10em;
+  overflow: hidden;
+}
+
+.loading>*>* {
+  width: 10em;
+  animation: loading 3s steps(40) infinite;
+}
+
+@keyframes loading {
+  0% {
+    transform: translateY(0%);
+  }
+
+  100% {
+    transform: translateY(-100%);
+  }
+}

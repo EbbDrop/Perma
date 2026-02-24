@@ -692,6 +692,8 @@ footer {
   display: grid;
   justify-content: center;
   align-content: center;
+  justify-items: center;
+  align-items: center;
 }
 
 .loading {
@@ -701,6 +703,7 @@ footer {
 }
 
 .loading>*>* {
+  margin: auto;
   width: 10em;
   animation: loading 3s steps(40) infinite;
 }

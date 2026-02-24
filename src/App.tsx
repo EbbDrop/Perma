@@ -10,8 +10,8 @@ import {
 } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { ChangeEvent, ReactElement, useEffect, useState } from "react";
-import { BrowserRouter, NavLink, Outlet, Route, Routes } from "react-router";
+import { ChangeEvent, ReactElement, useEffect, useRef, useState } from "react";
+import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router";
 import { DateTime } from "luxon";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { CountsData } from "../convex/func";
@@ -33,16 +33,12 @@ function Loading() {
 }
 
 export default function App() {
-  const { isAuthenticated } = useConvexAuth();
-
   var isAdmin = false;
   var name = "";
   var user;
-  if (isAuthenticated) {
-    try {
-      user = useQuery(api.func.user, {});
-    } catch {}
-  }
+  try {
+    user = useQuery(api.func.user, {});
+  } catch {}
 
   if (user !== undefined) {
     isAdmin = user.admin;
@@ -99,6 +95,7 @@ export default function App() {
                   <AdminEditUsers />
                 </>} />
               </Route>
+              <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Authenticated>
           <Unauthenticated>
@@ -341,7 +338,8 @@ function Schedule() {
 
     const you = slot.performer === user._id;
 
-    htmlData.push(<label key={slot._id} className={"slot" + (you ? " you" : "")}>
+    htmlData.push(
+      <label key={slot._id} className={"slot" + (you ? " you" : "")}>
         {fullName}
         <select
           onChange={event => {

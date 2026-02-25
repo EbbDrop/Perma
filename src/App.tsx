@@ -842,7 +842,7 @@ function AdminEditUsers() {
         <button onClick={_ => {
           const password = window.prompt("Nieuw password");
           if (password !== null) {
-            updateUserPassword({password});
+            updateUserPassword({password, user: user._id});
           }
         }}>verander password</button>
         {user._id == selfUser._id ? <div></div> : <button

@@ -533,6 +533,17 @@ function AdminEditSlots() {
           })
         }} checked={slot.showTime}/>
       </label>
+      <label>
+        Verborgen:
+        <input type="checkbox" onChange={e => {
+          updateUpcomingSlot({
+            slot: slot._id,
+            data: {
+              state: e.target.checked ? "hidden" : "upcoming",
+            }
+          })
+        }} checked={slot.state == "hidden"}/>
+      </label>
       <button onClick={_ => deleteUpcomingSlot({slot: slot._id})}>verwijder</button>
     </div>);
   }

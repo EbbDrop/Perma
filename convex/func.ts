@@ -500,6 +500,7 @@ export const updateUpcomingSlot = mutation({
       showTime: v.optional(v.boolean()),
       start: v.optional(v.string()),
       end: v.optional(v.string()),
+      state: v.optional(v.union(v.literal("upcoming"), v.literal("hidden")))
     }),
   },
   handler: async (ctx, args) => {

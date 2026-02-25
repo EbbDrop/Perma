@@ -25,7 +25,7 @@ function Loading() {
     <div className="loading" aria-label="loading animation">
       <picture>
         <source srcSet={loadingWhite}  media="(prefers-color-scheme: dark)"/>
-        <img src={loadingBlack} role="presentation"/>
+        <img width="256" height="10240" src={loadingBlack} role="presentation"/>
       </picture>
     </div>
     <h3>Aan het laden</h3>
@@ -48,7 +48,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <nav>
-        <EtnaImg className="logo logo-top" role="presentation"/>
+        <EtnaImg className="logo-top" role="presentation"/>
         <Authenticated>
           <NavLink to="/" end>Schema</NavLink>
           <NavLink to="/invullen" end>Invullen</NavLink>
@@ -109,7 +109,7 @@ export default function App() {
         <footer>
           Gemaakt door <a href="https://ebbdrop.com">
             Ebbe
-            <LogoLight className="logo" role="presentation"/>
+            <LogoLight className="logo-btm" role="presentation"/>
             Steenhoudt
           </a>
         </footer>

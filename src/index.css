@@ -639,14 +639,17 @@ footer {
   width: 8em;
 }
 
-.logo {
+.logo-top {
+  margin-top: -0.5em;
+  margin-bottom: -0.5em;
+  height: 3em;
+  width: 3em;
+}
+
+.logo-btm {
   height: 3em;
   width: 3em;
   vertical-align: -1em;
-}
-
-.logo-top {
-  display: block;
 }
 
 #login {
@@ -713,6 +716,7 @@ footer {
 .loading>*>* {
   margin: auto;
   width: 10em;
+  height: auto;
   animation: loading 3s steps(40) infinite;
 }
 

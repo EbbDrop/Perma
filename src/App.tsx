@@ -245,7 +245,7 @@ function farDateWarning(date: DateTime) {
   let diff = Math.trunc(date.toLocal().diffNow("days").days);
   if (diff < 0 || diff >= 7) {
     if (diff < -1) {
-      return `(${-diff} daggen geleden)`;
+      return `(${-diff} dagen geleden)`;
     } else if (diff < 0) {
       return `(${-diff} dag geleden)`;
     } else {

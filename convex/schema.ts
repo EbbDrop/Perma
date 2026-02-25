@@ -49,7 +49,7 @@ export default defineSchema({
 
     upcoming: v.boolean(),
     state: v.optional(v.union(v.literal("published"), v.literal("upcoming"), v.literal("hidden"))),
-  }).index("by_group_state", ["group", "state", "start"]),
+  }).index("by_group_upcoming", ["group", "upcoming", "start"]),
 
   selectedSlots: defineTable({
     user: v.id("users"),

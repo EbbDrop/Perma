@@ -639,11 +639,17 @@ footer {
   width: 8em;
 }
 
-.logo-top {
+.logo-wrapper-for-safari-on-ios {
+  flex: 0;
   margin-top: -0.5em;
   margin-bottom: -0.5em;
   height: 3em;
   width: 3em;
+}
+
+.logo-top {
+  height: 100%;
+  width: 100%;
 }
 
 .logo-btm {

@@ -48,7 +48,9 @@ export default function App() {
   return (
     <BrowserRouter>
       <nav>
-        <EtnaImg className="logo-top" role="presentation"/>
+        <div className="logo-wrapper-for-safari-on-ios">
+          <EtnaImg className="logo-top" role="presentation"/>
+        </div>
         <Authenticated>
           <NavLink to="/" end>Schema</NavLink>
           <NavLink to="/invullen" end>Invullen</NavLink>

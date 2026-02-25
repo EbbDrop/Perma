@@ -294,7 +294,7 @@ function Schedule() {
 
   const setPerformer = useMutation(api.func.slotsSetPerformer)
     .withOptimisticUpdate((local_store, args) => {
-      const slots = local_store.getQuery(api.func.slots, {upcoming: false})?.slice();
+      const slots = local_store.getQuery(api.func.slots, {state: "published"})?.slice();
       if (slots === undefined) {
         return;
       }
@@ -305,13 +305,13 @@ function Schedule() {
       var slot = structuredClone(slots[idx]);
       slot.performer = args.performer;
       slots[idx] = slot;
-      local_store.setQuery(api.func.slots, {upcoming: false}, slots);
+      local_store.setQuery(api.func.slots, {state: "published"}, slots);
     });
 
   const user = useQuery(api.func.user, {});
   const users = useQuery(api.func.users, {});
   const counts = useQuery(api.func.countsTable, {});
-  const slots = useQuery(api.func.slots, {upcoming: false});
+  const slots = useQuery(api.func.slots, {state: "published"});
   if (slots === undefined || user === undefined || users === undefined || counts === undefined) {
     return <Loading />;
   }
@@ -403,7 +403,7 @@ function userToOption(user: {_id: Id<"users">, name: string}): ReactElement {
 function AdminEditSlots() {
   const newUpcomingSlot = useMutation(api.func.newUpcomingSlot);
   const updateUpcomingSlot = useMutation(api.func.updateUpcomingSlot).withOptimisticUpdate((local_store, args) => {
-    const slots = local_store.getQuery(api.func.slots, {upcoming: true})?.slice();
+    const slots = local_store.getQuery(api.func.slots, {state: "upcoming+hidden"})?.slice();
     if (slots === undefined) {
       return;
     }
@@ -428,13 +428,13 @@ function AdminEditSlots() {
       slot.showTime = args.data.showTime;
     }
     slots[idx] = slot;
-    local_store.setQuery(api.func.slots, {upcoming: true}, slots);
+    local_store.setQuery(api.func.slots, {state: "upcoming+hidden"}, slots);
   });
   const deleteUpcomingSlot = useMutation(api.func.deleteUpcomingSlot);
   const rangeEditUpcomingSlos = useMutation(api.func.rangeEditUpcomingSlots);
   
   const types = useQuery(api.func.slotTypes, {});
-  const slots = useQuery(api.func.slots, {upcoming: true});
+  const slots = useQuery(api.func.slots, {state: "upcoming+hidden"});
   if (slots === undefined || types === undefined) {
     return <Loading />;
   }
@@ -880,7 +880,7 @@ function FillIn() {
     local_store.setQuery(api.func.note, {}, args.note);
   });
 
-  const slots = useQuery(api.func.slots, {upcoming: true});
+  const slots = useQuery(api.func.slots, {state: "upcoming"});
   const selectedSlots = useQuery(api.func.selectedSlots, {});
   const counts = useQuery(api.func.countsTable);
   const note = useQuery(api.func.note);

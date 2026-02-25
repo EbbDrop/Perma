@@ -5,24 +5,6 @@ import { idFromGroupAndName } from "./auth";
 import { Id, Doc } from "./_generated/dataModel";
 import { DateTime } from "luxon";
 
-
-export const migrateUpcoming = mutation({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getAuthUser(ctx);
-    if (!user.admin) {
-      throw Error("Need to be admin");
-    }
-    const slots = await ctx.db.query("slots")
-      .collect();
-
-    for (const slot of slots) {
-      await ctx.db.patch("slots", slot._id, {state: slot.upcoming ? "upcoming" : "published"});
-    }
-  }
-});
-
-
 async function getAuthUser(ctx: QueryCtx) {
     const userId = await getAuthUserId(ctx);
     if (userId === null) {
@@ -289,7 +271,7 @@ export const deleteSlotTypes = mutation({
     }
 
     const slots = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", q => q.eq("group", user.group))
+      .withIndex("by_group_state", q => q.eq("group", user.group))
       .filter(q => q.eq(q.field("type"), args.slotType))
       .collect();
     await Promise.all(slots.map(slot => {
@@ -463,6 +445,16 @@ export const countsTable = query({
   },
 });
 
+function compareSlots(a: Doc<"slots">, b: Doc<"slots">) {
+  if (a.start < b.start) {
+    return -1;
+  }
+  if (a.start > b.start) {
+    return 1;
+  }
+  return 0;
+}
+
 export const newUpcomingSlot = mutation({
   args: {},
   handler: async (ctx) => {
@@ -472,10 +464,9 @@ export const newUpcomingSlot = mutation({
     }
 
     const lastSlot = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", q => q.eq("group", user.group).eq("upcoming", true))
+      .withIndex("by_group_state", q => q.eq("group", user.group).eq("state", "upcoming"))
       .order("desc")
       .first();
-    console.log(lastSlot);
 
     var start = DateTime.now().set({ hour: 8, minute: 0, second: 0, millisecond: 0});
     if (lastSlot !== null) {
@@ -580,14 +571,23 @@ export const rangeEditUpcomingSlots = mutation({
     const startRange = DateTime.fromISO(args.startRange).toUTC().toISO() as string;
     const endRange = DateTime.fromISO(args.endRange).toUTC().toISO() as string;
 
-    let slotsToEdit = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", q => 
+    var slotsToEdit = await ctx.db.query("slots")
+      .withIndex("by_group_state", q => 
         q.eq("group", user.group)
-          .eq("upcoming", true)
+          .eq("state", "upcoming")
           .gte("start", startRange)
           .lt("start", endRange)
       )
       .collect();
+    slotsToEdit = slotsToEdit.concat(await ctx.db.query("slots")
+      .withIndex("by_group_state", q => 
+        q.eq("group", user.group)
+          .eq("state", "hidden")
+          .gte("start", startRange)
+          .lt("start", endRange)
+      )
+      .collect());
+    slotsToEdit.sort(compareSlots);
 
     const movedTimes = (slot: Doc<"slots">) => ({
       start: DateTime.fromISO(slot.start).plus({days: args.moveDays}).toUTC().toISO() as string,
@@ -667,7 +667,7 @@ export const autoSetPerformerUpcoming = mutation({
     }
 
     const slots = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", true))
+      .withIndex("by_group_state", (q) => q.eq("group", user.group).eq("state", "upcoming"))
       .collect();
     const types = await ctx.db.query("slotType")
       .withIndex("by_group", (q) => q.eq("group", user.group))
@@ -735,8 +735,8 @@ export const publishUpcoming = mutation({
     const startToday = DateTime.fromISO(args.now).startOf('day').toUTC().toISO() as string;
 
     const oldSlots = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", q => q.eq("group", user.group)
-        .eq("upcoming", false)
+      .withIndex("by_group_state", q => q.eq("group", user.group)
+        .eq("state", "published")
         .lt("start", startToday))
       .collect();
 
@@ -744,13 +744,18 @@ export const publishUpcoming = mutation({
       await ctx.db.delete("slots", slot._id);
     }
 
-    const slotsToPublish = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", q => 
+    var slotsToPublish = await ctx.db.query("slots")
+      .withIndex("by_group_state", q => 
         q.eq("group", user.group)
-          .eq("upcoming", true)
+          .eq("state", "upcoming")
       )
       .collect();
-
+    slotsToPublish = slotsToPublish.concat(await ctx.db.query("slots")
+      .withIndex("by_group_state", q => 
+        q.eq("group", user.group)
+          .eq("state", "hidden")
+      )
+      .collect());
 
     const pairs = await Promise.all(slotsToPublish.map(async slot => {
       const start = DateTime.fromISO(slot.start).plus({weeks: 1}).toUTC().toISO() as string;
@@ -766,10 +771,14 @@ export const publishUpcoming = mutation({
           group: user.group,
       });
 
-      await ctx.db.patch("slots", slot._id, {
-        upcoming: false,
-        state: "published",
-      })
+      if (slot.state === "hidden") {
+        await ctx.db.delete("slots", slot._id)
+      } else {
+        await ctx.db.patch("slots", slot._id, {
+          upcoming: false,
+          state: "published",
+        })
+      }
 
       const selections = await ctx.db.query("selectedSlots")
         .withIndex("by_slot", q => q.eq("slot", slot._id))
@@ -779,7 +788,7 @@ export const publishUpcoming = mutation({
         return ctx.db.delete("selectedSlots", s._id);
       }));
 
-      if (slot.performer !== undefined && slot.type !== undefined) {
+      if (slot.performer !== undefined && slot.type !== undefined && slot.state !== "hidden") {
         // This will be used as the keys for the map bellow, object are compared by ptr so need to
         // convert to a string. But later in updatePerformingCount we need the id's again so using
         // `|` to be able to do the split.
@@ -816,14 +825,21 @@ export const publishUpcoming = mutation({
 
 export const slots = query({
   args: {
-    upcoming: v.boolean(),
+    state: v.union(v.literal("published"), v.literal("upcoming"), v.literal("upcoming+hidden")),
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
 
-    return await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", args.upcoming))
+    var slots = await ctx.db.query("slots")
+      .withIndex("by_group_state", (q) => q.eq("group", user.group).eq("state", (args.state === "published") ? "published" : "upcoming"))
       .collect();
+    if (args.state === "upcoming+hidden") {
+      slots = slots.concat(await ctx.db.query("slots")
+        .withIndex("by_group_state", (q) => q.eq("group", user.group).eq("state", "hidden"))
+        .collect());
+      slots.sort(compareSlots);
+    }
+    return slots;
   },
 });
 
@@ -833,7 +849,7 @@ export const upcomingSlotsWithSelected = query({
     const user = await getAuthUser(ctx);
 
     const slots = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", true))
+      .withIndex("by_group_state", (q) => q.eq("group", user.group).eq("state", "upcoming"))
       .collect();
 
     const rawUsers = await ctx.db.query("users")
@@ -972,7 +988,7 @@ export const slotsForCalendar = query({
     }
     
     const slots = await ctx.db.query("slots")
-      .withIndex("by_group_upcoming", (q) => q.eq("group", user.group).eq("upcoming", false))
+      .withIndex("by_group_state", (q) => q.eq("group", user.group).eq("state", "published"))
       .collect();
 
     const slotsWithUsers = slots.map(async (slot) => {

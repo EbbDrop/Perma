@@ -8,7 +8,7 @@ import { DateTime } from "luxon";
 
 export const migrateUpcoming = mutation({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
     if (!user.admin) {
       throw Error("Need to be admin");

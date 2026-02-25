@@ -5,6 +5,21 @@ import { idFromGroupAndName } from "./auth";
 import { Id, Doc } from "./_generated/dataModel";
 import { DateTime } from "luxon";
 
+
+export const deleteUpcomingField = mutation({
+  args: {
+  },
+
+  handler: async (ctx, ) => {
+    const slots = await ctx.db.query("slots")
+      .collect();
+
+    for (const slot of slots) {
+      ctx.db.patch("slots", slot._id, {upcoming: undefined});
+    }
+  },
+});
+
 async function getAuthUser(ctx: QueryCtx) {
     const userId = await getAuthUserId(ctx);
     if (userId === null) {
@@ -485,7 +500,6 @@ export const newUpcomingSlot = mutation({
         showTime: true,
         start: start.toISO(),
         end: end.toISO(),
-        upcoming: true,
         state: "upcoming",
     });
   }
@@ -510,7 +524,7 @@ export const updateUpcomingSlot = mutation({
     }
 
     const slot = await ctx.db.get("slots", args.slot);
-    if (slot === null || slot.group !== user.group || !slot.upcoming) {
+    if (slot === null || slot.group !== user.group || slot.state === "published") {
       throw Error("invalid slot");
     }
 
@@ -547,7 +561,7 @@ export const deleteUpcomingSlot = mutation({
     }
 
     const slot = await ctx.db.get("slots", args.slot);
-    if (slot === null || slot.group !== user.group || !slot.upcoming) {
+    if (slot === null || slot.group !== user.group || slot.state === "published") {
       throw Error("invalid slot");
     }
 
@@ -599,7 +613,6 @@ export const rangeEditUpcomingSlots = mutation({
         await Promise.all(slotsToEdit.map(slot => {
           return ctx.db.insert("slots", {
               ...movedTimes(slot),
-              upcoming: true,
               state: slot.state,
               name: slot.name,
               type: slot.type,
@@ -633,7 +646,7 @@ export const slotsSetPerformer = mutation({
     if (slot === null || slot.group !== user.group) {
       throw Error("Invalid slot");
     }
-    if (slot.upcoming && !user.admin) {
+    if (slot.state !== "published" && !user.admin) {
       throw Error("Upcoming slots can only be edited by admins");     
     }
     if (args.performer !== undefined) {
@@ -643,7 +656,7 @@ export const slotsSetPerformer = mutation({
       }
     }
 
-    if (!slot.upcoming && slot.type !== null && slot.performer !== args.performer) {
+    if (slot.state === "published" && slot.type !== null && slot.performer !== args.performer) {
       if (slot.performer !== undefined) {
         await updatePerformingCount(ctx, slot.performer, slot.type, -1);
       }
@@ -763,7 +776,6 @@ export const publishUpcoming = mutation({
       await ctx.db.insert("slots", {
           start,
           end,
-          upcoming: true,
           state: slot.state,
           name: slot.name,
           showTime: slot.showTime,
@@ -775,7 +787,6 @@ export const publishUpcoming = mutation({
         await ctx.db.delete("slots", slot._id)
       } else {
         await ctx.db.patch("slots", slot._id, {
-          upcoming: false,
           state: "published",
         })
       }
@@ -937,7 +948,7 @@ export const setSelectedSlot = mutation({
   handler: async (ctx, args) => {
     const authUser = await getAuthUser(ctx);
     const slot = await ctx.db.get("slots", args.slot);
-    if (slot == null || slot.group !== authUser.group || !slot.upcoming) {
+    if (slot == null || slot.group !== authUser.group || slot.state !== "upcoming") {
       throw Error("Invalid slot")
     }
 

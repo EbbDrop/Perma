@@ -47,7 +47,7 @@ export default defineSchema({
 
     performer: v.optional(v.id("users")),
 
-    upcoming: v.boolean(),
+    upcoming: v.optional(v.boolean()),
     state: v.union(v.literal("published"), v.literal("upcoming"), v.literal("hidden")),
   }).index("by_group_state", ["group", "state", "start"]),
     

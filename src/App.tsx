@@ -16,6 +16,7 @@ import { DateTime } from "luxon";
 import { Doc, Id } from "../convex/_generated/dataModel";
 import { CountsData } from "../convex/func";
 import EtnaImg from "./static/etna.svg?react";
+import EtnaImgAlt from "./static/etnaAlt.svg?react";
 import LogoLight from "./static/logoLight.svg?react";
 import loadingWhite from "./static/loadingWhite.png";
 import loadingBlack from "./static/loadingBlack.png";
@@ -33,6 +34,8 @@ function Loading() {
 }
 
 export default function App() {
+  const [useAltImg, _] = useState(() => Math.random() > 0.9);
+
   var isAdmin = false;
   var name = "";
   var user;
@@ -49,7 +52,7 @@ export default function App() {
     <BrowserRouter>
       <nav>
         <div className="logo-wrapper-for-safari-on-ios">
-          <EtnaImg className="logo-top" role="presentation"/>
+          {useAltImg ? <EtnaImgAlt className="logo-top" role="presentation"/> : <EtnaImg className="logo-top" role="presentation"/>}
         </div>
         <Authenticated>
           <NavLink to="/" end>Schema</NavLink>
@@ -97,6 +100,10 @@ export default function App() {
                   <AdminEditUsers />
                 </>} />
               </Route>
+              <Route path="loading" element={<>
+                <title>Perma | 🥚</title>
+                <Loading />
+              </>} />
               <Route path="*" element={<Navigate to="/" />} />
             </Routes>
           </Authenticated>
@@ -145,7 +152,7 @@ function SignInForm() {
           e.preventDefault();
           const formData = new FormData(e.target as HTMLFormElement);
           void signIn("password", formData).catch(_ => {
-            setError("Foute naam of wachtwoord. (Vraag de perma verantwoordelijke om jou wachtwoord te veranderen als je het ben vergeten.)");
+            setError("Foute naam of wachtwoord. (Vraag de perma-verantwoordelijke om jouw wachtwoord te veranderen als je het bent vergeten.)");
           });
         }}
       >

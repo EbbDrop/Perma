@@ -645,6 +645,10 @@ footer {
   vertical-align: -1em;
 }
 
+.logo-top {
+  display: block;
+}
+
 #login {
   display: flex;
   flex-direction: column;

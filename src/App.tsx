@@ -48,7 +48,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <nav>
-        <EtnaImg className="logo" role="presentation"/>
+        <EtnaImg className="logo logo-top" role="presentation"/>
         <Authenticated>
           <NavLink to="/" end>Schema</NavLink>
           <NavLink to="/invullen" end>Invullen</NavLink>
@@ -278,7 +278,7 @@ function CountsTable({ data }: { data: CountsData }) {
       </tbody>
       <tfoot>
         <tr className="table-important">
-          <td>Gemidelde</td>
+          <td>Gemiddelde</td>
           {...data.types.map(t => (<td>
             {(t.sum / data.out_of).toFixed(1)}
           </td>))}

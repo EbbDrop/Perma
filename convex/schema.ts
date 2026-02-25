@@ -48,6 +48,7 @@ export default defineSchema({
     performer: v.optional(v.id("users")),
 
     upcoming: v.boolean(),
+    state: v.nullable(v.union(v.literal("published"), v.literal("upcoming"), v.literal("hidden"))),
   }).index("by_group_upcoming", ["group", "upcoming", "start"]),
 
   selectedSlots: defineTable({

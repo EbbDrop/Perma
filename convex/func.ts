@@ -5,6 +5,24 @@ import { idFromGroupAndName } from "./auth";
 import { Id, Doc } from "./_generated/dataModel";
 import { DateTime } from "luxon";
 
+
+export const migrateUpcoming = mutation({
+  args: {},
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("Need to be admin");
+    }
+    const slots = await ctx.db.query("slots")
+      .collect();
+
+    for (const slot of slots) {
+      await ctx.db.patch("slots", slot._id, {state: slot.upcoming ? "upcoming" : "published"});
+    }
+  }
+});
+
+
 async function getAuthUser(ctx: QueryCtx) {
     const userId = await getAuthUserId(ctx);
     if (userId === null) {
@@ -476,7 +494,8 @@ export const newUpcomingSlot = mutation({
         showTime: true,
         start: start.toISO(),
         end: end.toISO(),
-        upcoming: true
+        upcoming: true,
+        state: "upcoming",
     });
   }
 })
@@ -581,6 +600,7 @@ export const rangeEditUpcomingSlots = mutation({
           return ctx.db.insert("slots", {
               ...movedTimes(slot),
               upcoming: true,
+              state: slot.state,
               name: slot.name,
               type: slot.type,
               showTime: slot.showTime,
@@ -739,6 +759,7 @@ export const publishUpcoming = mutation({
           start,
           end,
           upcoming: true,
+          state: slot.state,
           name: slot.name,
           showTime: slot.showTime,
           type: slot.type,
@@ -746,7 +767,8 @@ export const publishUpcoming = mutation({
       });
 
       await ctx.db.patch("slots", slot._id, {
-        upcoming: false
+        upcoming: false,
+        state: "published",
       })
 
       const selections = await ctx.db.query("selectedSlots")

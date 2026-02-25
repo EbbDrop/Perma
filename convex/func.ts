@@ -5,21 +5,6 @@ import { idFromGroupAndName } from "./auth";
 import { Id, Doc } from "./_generated/dataModel";
 import { DateTime } from "luxon";
 
-
-export const deleteUpcomingField = mutation({
-  args: {
-  },
-
-  handler: async (ctx, ) => {
-    const slots = await ctx.db.query("slots")
-      .collect();
-
-    for (const slot of slots) {
-      ctx.db.patch("slots", slot._id, {upcoming: undefined});
-    }
-  },
-});
-
 async function getAuthUser(ctx: QueryCtx) {
     const userId = await getAuthUserId(ctx);
     if (userId === null) {

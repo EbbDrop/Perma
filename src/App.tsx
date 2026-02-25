@@ -622,17 +622,23 @@ function AdminSetPerformer() {
   if (slots === undefined || counts === undefined || users === undefined || waitingOnSelection === undefined) {
     return <Loading />;
   }
-  const countsWith = structuredClone(counts);
+  const currentCounts = structuredClone(counts);
+  for (var t of currentCounts.types) {
+    for (const u of Object.keys(t.counts)) {
+      t.counts[u as Id<"users">] = 0;
+    }
+    t.sum = 0;
+  }
 
   var htmlData = [];
   var lastDayString = undefined;
 
   for (const slot of slots) {
-    let countIdx = countsWith.types.findIndex(t => t._id === slot.type);
+    let countIdx = currentCounts.types.findIndex(t => t._id === slot.type);
     if (countIdx >= 0 && slot.performer !== undefined) {
-      countsWith.types[countIdx].counts[slot.performer] = (countsWith.types[countIdx].counts[slot.performer] ?? 0) + 1;
-      if (!(countsWith.users.find(u => u._id === slot.performer)?.assisted ?? true)) {
-        countsWith.types[countIdx].sum += 1;
+      currentCounts.types[countIdx].counts[slot.performer] = (currentCounts.types[countIdx].counts[slot.performer] ?? 0) + 1;
+      if (!(currentCounts.users.find(u => u._id === slot.performer)?.assisted ?? true)) {
+        currentCounts.types[countIdx].sum += 1;
       }
     }
 
@@ -745,11 +751,11 @@ function AdminSetPerformer() {
             <hr/>
           </div>)}
           <div>
-            <h2>Overzicht ZONDER volgend schema</h2>
-            <CountsTable data={counts}/>
+            <h2>Overzicht deze week</h2>
+            <CountsTable data={currentCounts}/>
             <hr/>
-            <h2>Overzicht MET volgend schema</h2>
-            <CountsTable data={countsWith}/>
+            <h2>Overzicht</h2>
+            <CountsTable data={counts}/>
           </div>
         </div>
       </div>

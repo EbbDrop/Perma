@@ -200,6 +200,7 @@ table {
   body {
     background-color: var(--background-950);
     --color-text: white;
+    --color-text-light: #bbb;
 
     --color-text-primary: black;
     --color-text-secondary: white;
@@ -224,6 +225,7 @@ table {
   body {
     background-color: white;
     --color-text: black;
+    --color-text-light: #444;
 
     --color-text-primary: black;
     --color-text-secondary: black;
@@ -330,6 +332,10 @@ select {
   padding: 0.5em;
   color: var(--color-text);
   background-color: var(--color-bg);
+}
+
+select:disabled {
+  appearance: none;
 }
 
 textarea {
@@ -550,7 +556,7 @@ footer {
   color: var(--color-text-primary);
 }
 
-@media (max-width: 25rem) {
+@media (max-width: 28rem) {
   .schedule-container {
     grid-template-columns: 1fr;
   }
@@ -567,13 +573,12 @@ footer {
 
   .fill-in-slot {
     display: flex;
-    /* flex-direction: row-reverse; */
-    /* justify-content: center; */
   }
 }
 
-.warn {
-  float: right;
+.slot-inner-div {
+  display: flex;
+  justify-content: space-between;
 }
 
 #publish {
@@ -694,8 +699,8 @@ footer {
   margin-block: 0.3em;
 }
 
-.prefere-no-break {
-  display: inline-block;
+.slot-time-range {
+  color: var(--color-text-light);
 }
 
 

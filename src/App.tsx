@@ -237,7 +237,7 @@ function slotStrings(slot: Doc<"slots">) {
         endHour = end.toLocaleString({ weekday: 'short', hour: '2-digit', minute: '2-digit' });
       }
 
-      fullName = <span>{slot.name} <span className="prefere-no-break">({startHour} tot {endHour})</span></span>
+      fullName = <span>{slot.name} <span className="slot-time-range">({startHour} tot {endHour})</span></span>
     }
 
     return {start, end, dayString, fullName};
@@ -291,8 +291,9 @@ function CountsTable({ data }: { data: CountsData }) {
 }
 
 function Schedule() {
-  const [now, setNow] = useState(DateTime.now())
-  useEffect(() => {setTimeout(() => setNow(DateTime.now()), 60000)}, [now])
+  const [editEnabled, setEditEnabled] = useState(false);
+  const [now, setNow] = useState(DateTime.now());
+  useEffect(() => {setTimeout(() => setNow(DateTime.now()), 60000)}, [now]);
 
   const setPerformer = useMutation(api.func.slotsSetPerformer)
     .withOptimisticUpdate((local_store, args) => {
@@ -358,6 +359,8 @@ function Schedule() {
             })
           }}
           value={slot.performer ?? ""}
+          disabled={!editEnabled}
+          role={editEnabled ? "combobox" : "label"}
         >
           <option value="" aria-label="Niemand"></option>
           {...users.map(u => userToOption(u))}
@@ -378,8 +381,23 @@ function Schedule() {
   return (<div className="main-layout">
     {rightNowHtml}
     <div className="columns-layout">
-      <div className="schedule-container small-colum">
-      {...htmlData}
+      <div className="small-colum">
+        <div className="schedule-container">
+          {...htmlData}
+        </div>
+        <hr />
+        {editEnabled ? (<p>
+            Gebruik de knoppen hierboven om het schema aan te passen.
+          </p>) : (<p>
+            Wissel je met iemand? Klik dan op de deze knop en pas het aan hierboven: 
+            {" "}<button
+              onClick={_ => setEditEnabled(!editEnabled)}
+              className={editEnabled ? "button-active" : ""}
+            >
+              Pas schema aan
+            </button>
+          </p>)
+        }
       </div>
       <div className="table-column">
         <div>
@@ -663,32 +681,31 @@ function AdminSetPerformer() {
       && slot.not_selected_users.map(u => u._id).includes(slot.performer);
 
     htmlData.push(<label key={slot._id} className="slot">
-        <div>
-          <span>{fullName}</span>
-          {warn && <div className="warn" title="Deze persoon heeft niet aangeduit dat ze konden op deze shift.">⚠️</div>}
-        </div>
+      <div className="slot-inner-div">
+        {fullName}
+        {warn && <div className="warn" title="Deze persoon heeft niet aangeduit dat ze konden op deze shift.">⚠️</div>}
+      </div>
+      <select
+        onChange={event => {
+          event.preventDefault();
+          var performer = undefined;
+          if (event.target.value !== "") {
+            performer = event.target.value as Id<"users">;
+          }
 
-        <select
-          onChange={event => {
-            event.preventDefault();
-            var performer = undefined;
-            if (event.target.value !== "") {
-              performer = event.target.value as Id<"users">;
-            }
-
-            setPerformer({
-              slot: slot._id,
-              performer,
-            })
-          }}
-          value={slot.performer ?? ""}
-        >
-          <option value="" aria-label="Niemand"></option>
-          <option disabled>-- kunnen --</option>
-          {...slot.selected_users.map(u => userToOption(u))}
-          <option disabled>-- kunnen NIET --</option>
-          {...slot.not_selected_users.map(u => userToOption(u))}
-        </select>
+          setPerformer({
+            slot: slot._id,
+            performer,
+          })
+        }}
+        value={slot.performer ?? ""}
+      >
+        <option value="" aria-label="Niemand"></option>
+        <option disabled>-- kunnen --</option>
+        {...slot.selected_users.map(u => userToOption(u))}
+        <option disabled>-- kunnen NIET --</option>
+        {...slot.not_selected_users.map(u => userToOption(u))}
+      </select>
     </label>);
   }
   if (htmlData.length === 0) {

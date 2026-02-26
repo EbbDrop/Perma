@@ -34,7 +34,7 @@ function Loading() {
 }
 
 export default function App() {
-  const [useAltImg, _] = useState(() => Math.random() > 0.9);
+  const [useAltImg, _] = useState(() => Math.random() > 0.99);
 
   var isAdmin = false;
   var name = "";

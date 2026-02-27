@@ -931,7 +931,7 @@ function FillIn() {
     return <Loading />;
   }
   if (slots.length === 0) {
-    return <h3>Geen perma nodig</h3>;
+    return <h3>Er is geen perma nodig op dit moment</h3>;
   }
 
   var htmlData = [];

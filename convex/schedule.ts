@@ -1,227 +1,14 @@
 import { v } from "convex/values";
-import { query, mutation, QueryCtx, MutationCtx, ActionCtx } from "./_generated/server";
-import { getAuthUserId, createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
-import { idFromGroupAndName } from "./auth";
+import { query, mutation, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { DateTime } from "luxon";
+import { getAuthUser } from "./usersAndGroups";
 
-async function getAuthUser(ctx: QueryCtx) {
-    const userId = await getAuthUserId(ctx);
-    if (userId === null) {
-      throw Error("Need to log in");
-    }
-    const user = await ctx.db.get("users", userId);
-    if (user === null) {
-      throw Error("Invalid user");
-    }
-    return user;
-}
-
-async function getGroupForUser(ctx: QueryCtx, user: Doc<"users">) {
-    const group = await ctx.db.get("group", user.group);
-    if (group === null) {
-      throw Error("Invalid group for valid user???");
-    }
-    return group;
-}
-
-async function getAuthGroup(ctx: QueryCtx) {
-    const user = await getAuthUser(ctx);
-    return await getGroupForUser(ctx, user);
-}
-
-export const allGroups = query({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query("group").collect();
-  },
-});
-
-export const groupInfo = query({
-  args: {},
-  handler: async (ctx) => {
-    const group = getAuthGroup(ctx);
-    return group;
-  },
-});
-
-export const addUser = mutation({
-  args: {
-    name: v.string(),
-    password: v.string()
-  },
-
-  handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
-    if (!user.admin) {
-      throw Error("Need to be admin");
-    }
-
-    const group = await getGroupForUser(ctx, user);
-
-    const id = idFromGroupAndName(group._id, args.name);
-    await createAccount(ctx as unknown as ActionCtx, {
-      provider: "password",
-      account: { id, secret: args.password },
-      profile: {
-        name: args.name,
-        group: group._id,
-        admin: false,
-        assisted: false,
-      }
-    });
-  },
-});
-
-export const updateUser = mutation({
-  args: {
-    user: v.id("users"),
-
-    data: v.object({
-      name: v.optional(v.string()),
-      assisted: v.optional(v.boolean()),
-      admin: v.optional(v.boolean()),
-    }),
-  },
-
-  handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser.admin) {
-      throw Error("Need to be admin");
-    }
-    if (authUser._id == args.user && args.data.admin === false) {
-      return null;
-    }
-
-    const user = await ctx.db.get("users", args.user);
-    if (user === null || user.group !== authUser.group) {
-      throw Error("Invalid user");
-    }
-
-    ctx.db.patch("users", args.user, args.data)
-  },
-});
-
-export const updateUserPassword = mutation({
-  args: {
-    user: v.optional(v.id("users")),
-    password: v.string()
-  },
-
-  handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (args.user !== undefined && !authUser.admin) {
-      throw Error("Need to be admin to modify other persons password");
-    }
-
-    var user = authUser;
-    if (args.user !== undefined) {
-      const otherUser = await ctx.db.get("users", args.user);
-      if (otherUser === null) {
-        throw Error("Invalid user");
-      }
-      user = otherUser;
-    }
-
-    const id = idFromGroupAndName(user.group, user.name);
-    await modifyAccountCredentials(ctx as unknown as ActionCtx, {
-      provider: "password",
-      account: { id, secret: args.password },
-    });
-  },
-});
-
-export const updateUserName = mutation({
-  args: {
-    user: v.optional(v.id("users")),
-    name: v.string()
-  },
-
-  handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (args.user !== undefined && !authUser.admin) {
-      throw Error("Need to be admin to modify other persons name");
-    }
-
-    var user = authUser;
-    if (args.user !== undefined) {
-      const otherUser = await ctx.db.get("users", args.user);
-      if (otherUser === null) {
-        throw Error("Invalid user");
-      }
-      user = otherUser;
-    }
-
-    const oldId = idFromGroupAndName(user.group, user.name);
-    const newId = idFromGroupAndName(user.group, args.name);
-    const newIdAcount = await ctx.db.query("authAccounts")
-      .withIndex("providerAndAccountId", q => q.eq("provider", "password")
-      .eq("providerAccountId", newId))
-      .unique();
-    if (newIdAcount !== null) {
-      throw Error("User with name already exists");
-    }
-
-    const account = await ctx.db.query("authAccounts")
-      .withIndex("providerAndAccountId", q => q.eq("provider", "password")
-      .eq("providerAccountId", oldId))
-      .unique();
-    if (account === null) {
-      throw Error("Invalid user");
-    }
-
-    await ctx.db.patch("authAccounts", account?._id, {providerAccountId: newId});
-    await ctx.db.patch("users", user._id, {name: args.name});
-  },
-});
-
-export const deleteUser = mutation({
-  args: {
-    user: v.id("users"),
-  },
-
-  handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    if (!authUser.admin) {
-      throw Error("Need to be admin");
-    }
-    if (authUser._id === args.user) {
-      throw Error("Can't delete yourself");
-    }
-
-    const user = await ctx.db.get("users", args.user);
-    if (user == null) {
-      throw Error("Invalid user");
-    }
-
-    const id = idFromGroupAndName(user.group, user.name);
-    const account = await ctx.db.query("authAccounts")
-      .withIndex("providerAndAccountId", q => q.eq("provider", "password")
-      .eq("providerAccountId", id))
-      .unique();
-    if (account !== null) {
-      ctx.db.delete("authAccounts", account._id)
-    }
-    ctx.db.delete("users", args.user);
-  },
-});
-
-export const user = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getAuthUser(ctx);
-    return user;
-  },
-});
-
-export const users = query({
-  args: {},
-  handler: async (ctx) => {
-    const user = await getAuthUser(ctx);
-    return await ctx.db.query("users").withIndex("by_group", q => q.eq("group", user.group)).collect();
-  },
-});
-
+/**
+ * Add a new slot type
+ *
+ * Admin only.
+ */
 export const addSlotTypes = mutation({
   args: {},
   handler: async (ctx) => {
@@ -237,6 +24,11 @@ export const addSlotTypes = mutation({
   },
 });
 
+/**
+ * Change the name of a slot type.
+ *
+ * Admin only.
+ */
 export const updateSlotTypes = mutation({
   args: {
     slotType: v.id("slotType"),
@@ -256,6 +48,11 @@ export const updateSlotTypes = mutation({
   },
 });
 
+/**
+ * Delet a slot type.
+ *
+ * Admin only.
+ */
 export const deleteSlotTypes = mutation({
   args: {
     slotType: v.id("slotType"),
@@ -289,6 +86,9 @@ export const deleteSlotTypes = mutation({
   },
 });
 
+/**
+ * @returns A list of all the slot types
+ */
 export const slotTypes = query({
   args: {},
   handler: async (ctx) => {
@@ -319,6 +119,9 @@ async function updatePerformingCount(
   }
 }
 
+/**
+ * Change the counts of a list of users all at once. Only used via the dashboard at the moment.
+ */
 export const bulkEditCounts = mutation({
   args: {
     updates: v.array(v.object({
@@ -355,6 +158,11 @@ export const bulkEditCounts = mutation({
   },
 })
 
+/**
+ * Move the counts from one slot type to another slot type.
+ *
+ * Admin only.
+ */
 export const transferCounts = mutation({
   args: {
     fromType: v.id("slotType"),
@@ -396,6 +204,9 @@ export type CountsData = {
   users: Doc<"users">[],
   out_of: number,
 };
+/**
+ * @returns all the data needed to draw a table of all the counts for all users and all slot types.
+ */
 export const countsTable = query({
   args: {},
   handler: async (ctx): Promise<CountsData> => {
@@ -455,6 +266,11 @@ function compareSlots(a: Doc<"slots">, b: Doc<"slots">) {
   return 0;
 }
 
+/**
+ * Add a new upcoming slot. Afther the last slot or if this is the first slot it is added today at 8
+ *
+ * Admin only.
+ */
 export const newUpcomingSlot = mutation({
   args: {},
   handler: async (ctx) => {
@@ -490,6 +306,11 @@ export const newUpcomingSlot = mutation({
   }
 })
 
+/**
+ * Change some data about a upcoming slot.
+ *
+ * Admin only.
+ */
 export const updateUpcomingSlot = mutation({
   args: {
     slot: v.id("slots"),
@@ -536,6 +357,11 @@ export const updateUpcomingSlot = mutation({
   }
 })
 
+/**
+ * Delete a upcoing slot.
+ *
+ * Admin only.
+ */
 export const deleteUpcomingSlot = mutation({
   args: {
     slot: v.id("slots"),
@@ -555,6 +381,13 @@ export const deleteUpcomingSlot = mutation({
   }
 })
 
+/**
+ * "move", "copy" or "delete" a range of upcoming slots, the range is defined by a inclusive start
+ * date and a NON inclusive end date. The start date is used to identify the slots. `move" and
+ * "copy"`move the slots `moveDays` amount of days. This is not used for "delete".
+ *
+ * Admin only.
+ */
 export const rangeEditUpcomingSlots = mutation({
   args: {
     startRange: v.string(),
@@ -621,6 +454,10 @@ export const rangeEditUpcomingSlots = mutation({
   }
 });
 
+/**
+ * Change the performer of a slot. Changing the performer of a upcoming slot can only be done by
+ * admins.
+ */
 export const slotsSetPerformer = mutation({
   args: {
     slot: v.id("slots"),
@@ -655,6 +492,11 @@ export const slotsSetPerformer = mutation({
   },
 })
 
+/**
+ * Automaticly try to fill in the upcoming schedule in a fair way.
+ *
+ * Admin only.
+ */
 export const autoSetPerformerUpcoming = mutation({
   args: {
     replace: v.boolean(),
@@ -720,6 +562,15 @@ export const autoSetPerformerUpcoming = mutation({
   },
 });
 
+/**
+ * Publish the upcoming slots by making them visible. The upcming slots are also copied to the next
+ * week. All selection by users are removed and their nodes are deleted.
+ *
+ * Any slot that start before the day in `now` are removed from the old schedule. Set `now` in the
+ * local timezone to make the day border lignup.
+ *
+ * Admin only.
+ */
 export const publishUpcoming = mutation({
   args: {
     now: v.string(),
@@ -820,6 +671,9 @@ export const publishUpcoming = mutation({
   }
 });
 
+/**
+ * @returns Returns all slots with a sertain `stater`.
+ */
 export const slots = query({
   args: {
     state: v.union(v.literal("published"), v.literal("upcoming"), v.literal("upcoming+hidden")),
@@ -840,6 +694,10 @@ export const slots = query({
   },
 });
 
+/**
+ * @returns The list of upcoming slots with the users have and have not selected atached as extra
+ * data to every slot.
+ */
 export const upcomingSlotsWithSelected = query({
   args: {},
   handler: async (ctx) => {
@@ -874,6 +732,9 @@ export const upcomingSlotsWithSelected = query({
   },
 });
 
+/**
+ * @returns Retuns a list of users who have not select any slots or have not set a note yet.
+ */
 export const waitingOnSelection = query({
   args: {},
   handler: async (ctx) => {
@@ -904,28 +765,25 @@ export const waitingOnSelection = query({
   },
 });
 
+/**
+ * @returns Retuns the list of slots the current user has selected.
+ */
 export const selectedSlots = query({
-  args: {
-    userId: v.optional(v.id("users")),
-  },
-  handler: async (ctx, args) => {
-    const authUser = await getAuthUser(ctx);
-    const authGroup = await getGroupForUser(ctx, authUser);
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthUser(ctx);
 
-    const user = args.userId === undefined ? authUser : await ctx.db.get("users", args.userId);
-    if (user === null) {
-      throw Error("Invalid user");
-    }
-    const userGroup = await getGroupForUser(ctx, user);
-    if (authGroup._id !== userGroup._id) {
-      throw Error("User is part of diffrent group");
-    }
+    const slots = await ctx.db.query("selectedSlots")
+      .withIndex("by_user", q => q.eq("user", user._id))
+      .collect();
 
-    const slots = await ctx.db.query("selectedSlots").withIndex("by_user", q => q.eq("user", user._id)).collect();
     return slots.map(s => s.slot);
   },
 });
 
+/**
+ * Select or unselect a slot as the current loged in user.
+ */
 export const setSelectedSlot = mutation({
   args: {
     slot: v.id("slots"),
@@ -955,6 +813,9 @@ export const setSelectedSlot = mutation({
   },
 })
 
+/**
+ * Set a not as the curretnly logged in user.
+ */
 export const setNote = mutation({
   args: {
     note: v.string(),
@@ -965,6 +826,9 @@ export const setNote = mutation({
   },
 })
 
+/**
+ * @returns Get the note of the currenly loged in user.
+ */
 export const note = query({
   args: {},
   handler: async (ctx) => {
@@ -973,6 +837,10 @@ export const note = query({
   },
 })
 
+/**
+ * @returns Retuns the schedule to create the ics calender data. You don't need to be
+ * authenticated to use this so that the calendar can be intergrated in other calendar products.
+ */
 export const slotsForCalendar = query({
   args: {
     group: v.id("group"),

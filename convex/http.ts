@@ -10,6 +10,7 @@ const http = httpRouter();
 
 auth.addHttpRoutes(http);
 
+/// Returns a calendar in the ics format for syncing with other calendar apps.
 http.route({
     method: "GET",
     path: "/calendar.ics",
@@ -24,7 +25,7 @@ http.route({
         });
       }
 
-      const {you, slots} = await ctx.runQuery(api.func.slotsForCalendar, {
+      const {you, slots} = await ctx.runQuery(api.schedule.slotsForCalendar, {
           user: user as Id<"users">,
           group: group as Id<"group">,
       });

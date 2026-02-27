@@ -14,7 +14,7 @@ import { ChangeEvent, ReactElement, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router";
 import { DateTime } from "luxon";
 import { Doc, Id } from "../convex/_generated/dataModel";
-import { CountsData } from "../convex/func";
+import { CountsData } from "../convex/schedule";
 import EtnaImg from "./static/etna.svg?react";
 import EtnaImgAlt from "./static/etnaAlt.svg?react";
 import LogoLight from "./static/logoLight.svg?react";
@@ -40,7 +40,7 @@ export default function App() {
   var name = "";
   var user;
   try {
-    user = useQuery(api.func.user, {});
+    user = useQuery(api.usersAndGroups.user, {});
   } catch {}
 
   if (user !== undefined) {
@@ -140,7 +140,7 @@ function SignOutButton() {
 }
 
 function SignInForm() {
-  const groups = useQuery(api.func.allGroups, {}) ?? [];
+  const groups = useQuery(api.usersAndGroups.allGroups, {}) ?? [];
 
   const { signIn } = useAuthActions();
   const [error, setError] = useState<string | null>(null);
@@ -187,8 +187,8 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
   if (me === undefined) {
     return <Loading />;
   }
-  const updateUserName = useMutation(api.func.updateUserName);
-  const updateUserPassword = useMutation(api.func.updateUserPassword);
+  const updateUserName = useMutation(api.usersAndGroups.updateUserName);
+  const updateUserPassword = useMutation(api.usersAndGroups.updateUserPassword);
 
   const baseUrl = import.meta.env.VITE_CONVEX_SITE_URL as string
   const calendarUrl = `${baseUrl}/calendar.ics?group=${me.group}&user=${me._id}`;
@@ -302,9 +302,9 @@ function Schedule() {
   const [now, setNow] = useState(DateTime.now());
   useEffect(() => {setTimeout(() => setNow(DateTime.now()), 60000)}, [now]);
 
-  const setPerformer = useMutation(api.func.slotsSetPerformer)
+  const setPerformer = useMutation(api.schedule.slotsSetPerformer)
     .withOptimisticUpdate((local_store, args) => {
-      const slots = local_store.getQuery(api.func.slots, {state: "published"})?.slice();
+      const slots = local_store.getQuery(api.schedule.slots, {state: "published"})?.slice();
       if (slots === undefined) {
         return;
       }
@@ -315,13 +315,13 @@ function Schedule() {
       var slot = structuredClone(slots[idx]);
       slot.performer = args.performer;
       slots[idx] = slot;
-      local_store.setQuery(api.func.slots, {state: "published"}, slots);
+      local_store.setQuery(api.schedule.slots, {state: "published"}, slots);
     });
 
-  const user = useQuery(api.func.user, {});
-  const users = useQuery(api.func.users, {});
-  const counts = useQuery(api.func.countsTable, {});
-  const slots = useQuery(api.func.slots, {state: "published"});
+  const user = useQuery(api.usersAndGroups.user, {});
+  const users = useQuery(api.usersAndGroups.users, {});
+  const counts = useQuery(api.schedule.countsTable, {});
+  const slots = useQuery(api.schedule.slots, {state: "published"});
   if (slots === undefined || user === undefined || users === undefined || counts === undefined) {
     return <Loading />;
   }
@@ -428,9 +428,9 @@ function userToOption(user: {_id: Id<"users">, name: string}): ReactElement {
 }
 
 function AdminEditSlots() {
-  const newUpcomingSlot = useMutation(api.func.newUpcomingSlot);
-  const updateUpcomingSlot = useMutation(api.func.updateUpcomingSlot).withOptimisticUpdate((local_store, args) => {
-    const slots = local_store.getQuery(api.func.slots, {state: "upcoming+hidden"})?.slice();
+  const newUpcomingSlot = useMutation(api.schedule.newUpcomingSlot);
+  const updateUpcomingSlot = useMutation(api.schedule.updateUpcomingSlot).withOptimisticUpdate((local_store, args) => {
+    const slots = local_store.getQuery(api.schedule.slots, {state: "upcoming+hidden"})?.slice();
     if (slots === undefined) {
       return;
     }
@@ -455,13 +455,13 @@ function AdminEditSlots() {
       slot.showTime = args.data.showTime;
     }
     slots[idx] = slot;
-    local_store.setQuery(api.func.slots, {state: "upcoming+hidden"}, slots);
+    local_store.setQuery(api.schedule.slots, {state: "upcoming+hidden"}, slots);
   });
-  const deleteUpcomingSlot = useMutation(api.func.deleteUpcomingSlot);
-  const rangeEditUpcomingSlos = useMutation(api.func.rangeEditUpcomingSlots);
+  const deleteUpcomingSlot = useMutation(api.schedule.deleteUpcomingSlot);
+  const rangeEditUpcomingSlos = useMutation(api.schedule.rangeEditUpcomingSlots);
   
-  const types = useQuery(api.func.slotTypes, {});
-  const slots = useQuery(api.func.slots, {state: "upcoming+hidden"});
+  const types = useQuery(api.schedule.slotTypes, {});
+  const slots = useQuery(api.schedule.slots, {state: "upcoming+hidden"});
   if (slots === undefined || types === undefined) {
     return <Loading />;
   }
@@ -599,11 +599,11 @@ function AdminEditSlots() {
 }
 
 function AdminEditTypes() {
-  const addType = useMutation(api.func.addSlotTypes);
-  const updateType = useMutation(api.func.updateSlotTypes);
-  const deleteType = useMutation(api.func.deleteSlotTypes);
+  const addType = useMutation(api.schedule.addSlotTypes);
+  const updateType = useMutation(api.schedule.updateSlotTypes);
+  const deleteType = useMutation(api.schedule.deleteSlotTypes);
 
-  const types = useQuery(api.func.slotTypes, {});
+  const types = useQuery(api.schedule.slotTypes, {});
   if (types === undefined) {
     return <Loading />;
   }
@@ -631,11 +631,11 @@ function AdminEditTypes() {
 }
 
 function AdminSetPerformer() {
-  const publishUpcoming = useMutation(api.func.publishUpcoming);
-  const autoSetPerformerUpcoming= useMutation(api.func.autoSetPerformerUpcoming);
-  const setPerformer = useMutation(api.func.slotsSetPerformer)
+  const publishUpcoming = useMutation(api.schedule.publishUpcoming);
+  const autoSetPerformerUpcoming= useMutation(api.schedule.autoSetPerformerUpcoming);
+  const setPerformer = useMutation(api.schedule.slotsSetPerformer)
     .withOptimisticUpdate((local_store, args) => {
-      const slots = local_store.getQuery(api.func.upcomingSlotsWithSelected)?.slice();
+      const slots = local_store.getQuery(api.schedule.upcomingSlotsWithSelected)?.slice();
       if (slots === undefined) {
         return;
       }
@@ -646,15 +646,15 @@ function AdminSetPerformer() {
       var slot = structuredClone(slots[idx]);
       slot.performer = args.performer;
       slots[idx] = slot;
-      local_store.setQuery(api.func.upcomingSlotsWithSelected, {}, slots);
+      local_store.setQuery(api.schedule.upcomingSlotsWithSelected, {}, slots);
     });
 
   const [disablePublish, setDisablePublish] = useState(false);
 
-  const slots = useQuery(api.func.upcomingSlotsWithSelected);
-  const counts = useQuery(api.func.countsTable);
-  const users = useQuery(api.func.users);
-  const waitingOnSelection = useQuery(api.func.waitingOnSelection);
+  const slots = useQuery(api.schedule.upcomingSlotsWithSelected);
+  const counts = useQuery(api.schedule.countsTable);
+  const users = useQuery(api.usersAndGroups.users);
+  const waitingOnSelection = useQuery(api.schedule.waitingOnSelection);
   if (slots === undefined || counts === undefined || users === undefined || waitingOnSelection === undefined) {
     return <Loading />;
   }
@@ -722,7 +722,7 @@ function AdminSetPerformer() {
   var htmlNotes = [];
   for (const user of users) {
     if (user.note) {
-      htmlNotes.push(<li>
+      htmlNotes.push(<li class="note-list-item">
         <h3>{user.name}</h3>
         <pre>{user.note}</pre>
       </li>);
@@ -799,14 +799,14 @@ function AdminSetPerformer() {
 }
 
 function AdminEditUsers() {
-  const addUser = useMutation(api.func.addUser);
-  const updateUser = useMutation(api.func.updateUser);
-  const updateUserPassword = useMutation(api.func.updateUserPassword);
-  const updateUserName = useMutation(api.func.updateUserName);
-  const deleteUser = useMutation(api.func.deleteUser);
+  const addUser = useMutation(api.usersAndGroups.addUser);
+  const updateUser = useMutation(api.usersAndGroups.updateUser);
+  const updateUserPassword = useMutation(api.usersAndGroups.updateUserPassword);
+  const updateUserName = useMutation(api.usersAndGroups.updateUserName);
+  const deleteUser = useMutation(api.usersAndGroups.deleteUser);
 
-  const selfUser = useQuery(api.func.user);
-  const users = useQuery(api.func.users);
+  const selfUser = useQuery(api.usersAndGroups.user);
+  const users = useQuery(api.usersAndGroups.users);
   if (selfUser === undefined || users === undefined) {
     return <Loading />;
   }
@@ -904,8 +904,8 @@ function Admin() {
 }
 
 function FillIn() {
-  const setSelectedSlot = useMutation(api.func.setSelectedSlot).withOptimisticUpdate((local_store, args) => {
-    let currentSelected = local_store.getQuery(api.func.selectedSlots, {});
+  const setSelectedSlot = useMutation(api.schedule.setSelectedSlot).withOptimisticUpdate((local_store, args) => {
+    let currentSelected = local_store.getQuery(api.schedule.selectedSlots, {});
     if (currentSelected === undefined) {
       return;
     }
@@ -917,16 +917,16 @@ function FillIn() {
       newSelected = currentSelected.slice();
       newSelected.push(args.slot);
     }
-    local_store.setQuery(api.func.selectedSlots, {}, newSelected);
+    local_store.setQuery(api.schedule.selectedSlots, {}, newSelected);
   });
-  const setNote = useMutation(api.func.setNote).withOptimisticUpdate((local_store, args) => {
-    local_store.setQuery(api.func.note, {}, args.note);
+  const setNote = useMutation(api.schedule.setNote).withOptimisticUpdate((local_store, args) => {
+    local_store.setQuery(api.schedule.note, {}, args.note);
   });
 
-  const slots = useQuery(api.func.slots, {state: "upcoming"});
-  const selectedSlots = useQuery(api.func.selectedSlots, {});
-  const counts = useQuery(api.func.countsTable);
-  const note = useQuery(api.func.note);
+  const slots = useQuery(api.schedule.slots, {state: "upcoming"});
+  const selectedSlots = useQuery(api.schedule.selectedSlots, {});
+  const counts = useQuery(api.schedule.countsTable);
+  const note = useQuery(api.schedule.note);
   if (slots === undefined || selectedSlots == undefined || counts == undefined || note === undefined) {
     return <Loading />;
   }

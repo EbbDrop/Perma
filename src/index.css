@@ -711,6 +711,14 @@ footer {
   display: grid;
 }
 
+.note-list-item {
+  margin-bottom: 0.7em;
+}
+
+.note-list-item>h3 {
+  margin: 0;
+}
+
 .loading-container {
   width: 100%;
   height: 100%;

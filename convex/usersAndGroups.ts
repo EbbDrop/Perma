@@ -1,6 +1,5 @@
 import { getAuthUserId, createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { v } from "convex/values";
-import { Doc } from "./_generated/dataModel";
 import { QueryCtx, query, mutation, ActionCtx } from "./_generated/server";
 import { idFromGroupAndName } from "./auth";
 

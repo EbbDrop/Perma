@@ -722,7 +722,7 @@ function AdminSetPerformer() {
   var htmlNotes = [];
   for (const user of users) {
     if (user.note) {
-      htmlNotes.push(<li class="note-list-item">
+      htmlNotes.push(<li className="note-list-item">
         <h3>{user.name}</h3>
         <pre>{user.note}</pre>
       </li>);

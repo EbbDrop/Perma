@@ -724,7 +724,7 @@ function AdminSetPerformer() {
     if (user.note) {
       htmlNotes.push(<li className="note-list-item">
         <h3>{user.name}</h3>
-        <pre>{user.note}</pre>
+        <p className="user-note">{user.note}</p>
       </li>);
     }
   }

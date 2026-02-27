@@ -719,6 +719,11 @@ footer {
   margin: 0;
 }
 
+.user-note {
+  white-space: pre-line;
+  max-width: 40em;
+}
+
 .loading-container {
   width: 100%;
   height: 100%;

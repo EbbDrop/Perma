@@ -493,7 +493,7 @@ export const slotsSetPerformer = mutation({
 })
 
 /**
- * Automaticly try to fill in the upcoming schedule in a fair way.
+ * Automatically try to fill in the upcoming schedule in a fair way.
  *
  * Admin only.
  */
@@ -525,11 +525,12 @@ export const autoSetPerformerUpcoming = mutation({
       );
     }
 
-    // If not replacing: Take the already set slots into acount
+    // If not replacing: Take the already set slots into account.
     if (!args.replace) {
       for (const slot of slots) {
         if (slot.type !== null && slot.performer !== undefined) {
-          counts[slot.type][slot.performer] = (counts[slot.type][slot.performer] ?? 0) + 1;
+        // Adding 10 to prioritize having an even week instead of having an even year.
+          counts[slot.type][slot.performer] = (counts[slot.type][slot.performer] ?? 0) + 10;
         }
       }
     }
@@ -554,7 +555,8 @@ export const autoSetPerformerUpcoming = mutation({
         countsAndUserIds.sort((a, b) => a.count - b.count);
         selectedUser = countsAndUserIds[0].user;
 
-        counts[type][selectedUser] = (counts[type][selectedUser] ?? 0) + 1;
+        // Adding 10 to prioritize having an even week instead of having an even year.
+        counts[type][selectedUser] = (counts[type][selectedUser] ?? 0) + 10;
       }
 
       ctx.db.patch("slots", slot._id, {performer: selectedUser});

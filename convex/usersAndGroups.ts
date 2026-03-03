@@ -197,7 +197,7 @@ export const updateUserName = mutation({
 });
 
 /**
- * Delet a user, only available to admins.
+ * Delete a user, only available to admins.
  */
 export const deleteUser = mutation({
     args: {
@@ -216,6 +216,13 @@ export const deleteUser = mutation({
         const user = await ctx.db.get("users", args.user);
         if (user == null) {
             throw Error("Invalid user");
+        }
+
+        const counts = await ctx.db.query("performingCount")
+            .withIndex("by_user", q => q.eq("user", user._id))
+            .collect();
+        for (const c of counts) {
+            await ctx.db.delete("performingCount", c._id);
         }
 
         const id = idFromGroupAndName(user.group, user.name);

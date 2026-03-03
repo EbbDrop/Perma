@@ -62,4 +62,5 @@ export default defineSchema({
     type: v.id("slotType"),
     count: v.number(),
   }).index("by_type_user", ["type", "user"])
+    .index("by_user", ["user"])
 });

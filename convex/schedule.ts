@@ -49,7 +49,7 @@ export const updateSlotTypes = mutation({
 });
 
 /**
- * Delet a slot type.
+ * Delete a slot type.
  *
  * Admin only.
  */
@@ -267,7 +267,7 @@ function compareSlots(a: Doc<"slots">, b: Doc<"slots">) {
 }
 
 /**
- * Add a new upcoming slot. Afther the last slot or if this is the first slot it is added today at 8
+ * Add a new upcoming slot. After the last slot or if this is the first slot it is added today at 8
  *
  * Admin only.
  */
@@ -307,7 +307,7 @@ export const newUpcomingSlot = mutation({
 })
 
 /**
- * Change some data about a upcoming slot.
+ * Change some data about an upcoming slot.
  *
  * Admin only.
  */
@@ -358,7 +358,7 @@ export const updateUpcomingSlot = mutation({
 })
 
 /**
- * Delete a upcoing slot.
+ * Delete an upcoming slot.
  *
  * Admin only.
  */
@@ -382,9 +382,9 @@ export const deleteUpcomingSlot = mutation({
 })
 
 /**
- * "move", "copy" or "delete" a range of upcoming slots, the range is defined by a inclusive start
- * date and a NON inclusive end date. The start date is used to identify the slots. `move" and
- * "copy"`move the slots `moveDays` amount of days. This is not used for "delete".
+ * "move", "copy" or "delete" a range of upcoming slots, the range is defined by an inclusive start
+ * date and a NON inclusive end date. The start date is used to identify the slots. "move" and
+ * "copy" move the slots `moveDays` amount of days. This is not used for "delete".
  *
  * Admin only.
  */
@@ -565,11 +565,11 @@ export const autoSetPerformerUpcoming = mutation({
 });
 
 /**
- * Publish the upcoming slots by making them visible. The upcming slots are also copied to the next
+ * Publish the upcoming slots by making them visible. The upcoming slots are also copied to the next
  * week. All selection by users are removed and their nodes are deleted.
  *
  * Any slot that start before the day in `now` are removed from the old schedule. Set `now` in the
- * local timezone to make the day border lignup.
+ * local timezone to make the day border lineup.
  *
  * Admin only.
  */
@@ -644,9 +644,9 @@ export const publishUpcoming = mutation({
         // `|` to be able to do the split.
         //
         // Using the map to sum the counts (instead of just calling updatePerformingCount here) is
-        // needed since the inserts in that function are only done at the end of the transaction =>
+        // needed. The inserts in that function are only done at the end of the transaction =>
         // next call will not see a new count was already created and multiple of the same id pairs
-        // will exsit.
+        // will exist.
         return slot.performer + "|" + slot.type;
       }
       return null;
@@ -788,7 +788,7 @@ export const selectedSlots = query({
 });
 
 /**
- * Select or unselect a slot as the current loged in user.
+ * Select or unselect a slot as the current logged in user.
  */
 export const setSelectedSlot = mutation({
   args: {
@@ -811,7 +811,7 @@ export const setSelectedSlot = mutation({
         ctx.db.insert("selectedSlots", {user: authUser._id,slot: args.slot});
       }
     } else {
-      /// Only one should ever exist, but still looping in case of..
+      /// Only one should ever exist, but still looping in case of.
       for (const s of exsisting) {
         ctx.db.delete("selectedSlots", s._id);
       }
@@ -820,7 +820,7 @@ export const setSelectedSlot = mutation({
 })
 
 /**
- * Set a not as the curretnly logged in user.
+ * Set a note for the currently logged in user.
  */
 export const setNote = mutation({
   args: {
@@ -845,7 +845,7 @@ export const note = query({
 
 /**
  * @returns Retuns the schedule to create the ics calender data. You don't need to be
- * authenticated to use this so that the calendar can be intergrated in other calendar products.
+ * authenticated to use this so that the calendar can be integrated in other calendar products.
  */
 export const slotsForCalendar = query({
   args: {

@@ -616,7 +616,12 @@ function AdminEditTypes() {
           slotType: type._id,
       })} defaultValue={type.name} />
       <span> </span>
-      <button onClick={_ => deleteType({slotType: type._id})}>verwijder</button>
+      <button onClick={_ => {
+        const ok = window.confirm("Ben je zeker dat je de shift soort \"" + type.name + "\" wilt verwijderen?");
+        if (ok === true) {
+          deleteType({slotType: type._id})
+        }
+      }}>verwijder</button>
     </div>);
   }
 
@@ -853,7 +858,12 @@ function AdminEditUsers() {
           }
         }}>verander password</button>
         {user._id == selfUser._id ? <div></div> : <button
-          onClick={_ => deleteUser({user: user._id})}
+          onClick={_ => {
+            const response = window.prompt("Type \"verwijder " + user.name + "\" om de acount van " + user.name + " te verwijderen.");
+            if (response === "verwijder " + user.name) {
+              deleteUser({user: user._id})
+            }
+          }}
         >verwijder</button>}
       </div>
     </div>);

@@ -291,10 +291,10 @@ table {
 
 th,
 td {
+  white-space: nowrap;
   background: var(--color-bg);
   padding: 0.3em;
   border-radius: var(--radius);
-  width: 7em;
 }
 
 strong {
@@ -613,6 +613,13 @@ footer {
 
 .table-holder {
   overflow-x: auto;
+  /* Hack for tables inside a flex elemnt, it was late alright */
+  max-width: 95vw;
+}
+
+.spacius-table td,
+.spacius-table th {
+  min-width: 7em;
 }
 
 .table-empty {
@@ -630,6 +637,40 @@ footer {
 .table-important>td {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
+}
+
+.cell-selected {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+}
+
+.cell-performer {
+  text-align: center;
+}
+
+.cell-performer:hover {
+  background: var(--color-bg-l);
+}
+
+.cell-selected:hover {
+  background: var(--color-bg-primary-l);
+}
+
+
+.cell-performer:active {
+  background: var(--color-bg-d);
+}
+
+.cell-selected:active {
+  background: var(--color-bg-primary-d);
+}
+
+.table-fill-container {
+  width: 100%;
+}
+
+.name-header {
+  background: none;
 }
 
 .notes {

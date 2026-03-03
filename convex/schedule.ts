@@ -674,7 +674,7 @@ export const publishUpcoming = mutation({
 });
 
 /**
- * @returns Returns all slots with a sertain `stater`.
+ * @returns Returns all slots with a sertain `state`.
  */
 export const slots = query({
   args: {
@@ -696,13 +696,17 @@ export const slots = query({
   },
 });
 
+export type SlotWithSelected = Doc<"slots"> & {
+  selected_users: {_id: Id<"users">, name: string}[],
+  not_selected_users: {_id: Id<"users">, name: string}[],
+};
 /**
  * @returns The list of upcoming slots with the users have and have not selected atached as extra
  * data to every slot.
  */
 export const upcomingSlotsWithSelected = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<SlotWithSelected[]> => {
     const user = await getAuthUser(ctx);
 
     const slots = await ctx.db.query("slots")

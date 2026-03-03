@@ -3,6 +3,7 @@
 import {
   Authenticated,
   AuthLoading,
+  ReactMutation,
   Unauthenticated,
   useConvexAuth,
   useMutation,
@@ -10,11 +11,12 @@ import {
 } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { ChangeEvent, ReactElement, useEffect, useState } from "react";
+import { ChangeEvent, ReactElement, useEffect, useReducer, useState } from "react";
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router";
 import { DateTime } from "luxon";
+import useLocalStorageState from 'use-local-storage-state';
 import { Doc, Id } from "../convex/_generated/dataModel";
-import { CountsData } from "../convex/schedule";
+import { CountsData, SlotWithSelected } from "../convex/schedule";
 import EtnaImg from "./static/etna.svg?react";
 import EtnaImgAlt from "./static/etnaAlt.svg?react";
 import LogoLight from "./static/logoLight.svg?react";
@@ -266,7 +268,7 @@ function farDateWarning(date: DateTime) {
 
 function CountsTable({ data }: { data: CountsData }) {
   return (<div className="table-holder">
-    <table>
+    <table className="spacius-table">
       <thead>
         <tr>
           <th className="table-empty" role="presentation"></th>
@@ -635,7 +637,115 @@ function AdminEditTypes() {
   </>);
 }
 
+function AdminSetPerformerList(slots: SlotWithSelected[], setPerformer: ReactMutation<typeof api.schedule.slotsSetPerformer>) {
+  var htmlData = [];
+  var lastDayString = undefined;
+
+  for (const slot of slots) {
+
+    const { start, dayString, fullName } = slotStrings(slot);
+    if (lastDayString !== dayString) {
+      lastDayString = dayString;
+      htmlData.push(<h3 className="day-title">{dayString} {farDateWarning(start)}</h3>);
+    }
+
+    const warn = slot.performer !== undefined
+        && slot.not_selected_users.map(u => u._id).includes(slot.performer);
+
+    htmlData.push(<label key={slot._id} className="slot">
+        <div className="slot-inner-div">
+            {fullName}
+            {warn && <div className="warn" title="Deze persoon heeft niet aangeduit dat ze konden op deze shift.">⚠️</div>}
+        </div>
+        <select
+            onChange={event => {
+                event.preventDefault();
+                var performer = undefined;
+                if (event.target.value !== "") {
+                    performer = event.target.value as Id<"users">;
+                }
+
+                setPerformer({
+                    slot: slot._id,
+                    performer,
+                });
+            } }
+            value={slot.performer ?? ""}
+        >
+            <option value="" aria-label="Niemand"></option>
+            <option disabled>-- kunnen --</option>
+            {...slot.selected_users.map(u => userToOption(u))}
+            <option disabled>-- kunnen NIET --</option>
+            {...slot.not_selected_users.map(u => userToOption(u))}
+        </select>
+    </label>);
+  }
+  return htmlData;
+}
+
+function AdminSetPerformerTable(slots: SlotWithSelected[], users: Doc<"users">[], setPerformer: ReactMutation<typeof api.schedule.slotsSetPerformer>) {
+  var rows = [];
+  var lastDayString = undefined;
+
+  users.sort((a, b) => +a.assisted - +b.assisted)
+
+  for (const slot of slots) {
+
+    const { start, dayString, fullName } = slotStrings(slot);
+    if (lastDayString !== dayString) {
+      lastDayString = dayString;
+      rows.push(<tr>
+        <th colSpan={1} className="day-title">{dayString} {farDateWarning(start)}</th>
+        {...users.map(u => 
+          <th className="name-header" key={u._id}>{u.name}</th>
+        )}
+      </tr>);
+    }
+
+    const warn = slot.performer !== undefined
+        && slot.not_selected_users.map(u => u._id).includes(slot.performer);
+
+    rows.push(<tr key={slot._id} className="">
+        <th className="slot-inner-div">
+            {fullName}
+            {warn && <div className="warn" title="Deze persoon heeft niet aangeduit dat ze konden op deze shift.">⚠️</div>}
+        </th>
+        {...users.map(u => {
+          const selected = slot.selected_users.find(s => s._id === u._id) !== undefined;
+          const performer = slot.performer === u._id;
+          return <td
+            key={u._id}
+            className={
+              "cell-performer" +
+              (performer ? " cell-selected" : "")
+            }
+            onClick={_ => {
+              setPerformer({performer: performer ? undefined : u._id, slot:slot._id})
+            }}
+            onKeyDown={e => {
+              if (e.code === "Enter") {
+                e.preventDefault();
+                setPerformer({performer: performer ? undefined : u._id, slot:slot._id})
+              }
+            }}
+            tabIndex={0}
+            role="button"
+          >{selected ? "●" : ""}</td>;
+        })}
+    </tr>);
+  }
+  return (<table className="table-fill-container">
+    <tbody>
+      {...rows}
+    </tbody>
+  </table>);
+}
+
 function AdminSetPerformer() {
+  const [tableLayout, setTableLayout] = useLocalStorageState("perma-admin-table-layout", {
+    defaultValue: false,
+  });
+
   const publishUpcoming = useMutation(api.schedule.publishUpcoming);
   const autoSetPerformerUpcoming= useMutation(api.schedule.autoSetPerformerUpcoming);
   const setPerformer = useMutation(api.schedule.slotsSetPerformer)
@@ -671,9 +781,6 @@ function AdminSetPerformer() {
     t.sum = 0;
   }
 
-  var htmlData = [];
-  var lastDayString = undefined;
-
   for (const slot of slots) {
     let countIdx = currentCounts.types.findIndex(t => t._id === slot.type);
     if (countIdx >= 0 && slot.performer !== undefined) {
@@ -682,48 +789,20 @@ function AdminSetPerformer() {
         currentCounts.types[countIdx].sum += 1;
       }
     }
+  }
 
-    const { start, dayString, fullName } = slotStrings(slot);
-    if (lastDayString !== dayString) {
-      lastDayString = dayString;
-      htmlData.push(<h3 className="day-title">{dayString} {farDateWarning(start)}</h3>);
+  var scheduleData = <div>Er zijn nog geen shiften gemaakt. Gebruik "shifts bewerken" hierboven om er toe te voegen</div>;
+  if (slots.length > 0) {
+    if (tableLayout) {
+      scheduleData = (<div className="table-holder">
+        {AdminSetPerformerTable(slots, users, setPerformer)}
+      </div>);
+    } else {
+      scheduleData = (<div className="schedule-container">
+        {...AdminSetPerformerList(slots, setPerformer)}
+      </div>);
     }
-
-    const warn = slot.performer !== undefined
-      && slot.not_selected_users.map(u => u._id).includes(slot.performer);
-
-    htmlData.push(<label key={slot._id} className="slot">
-      <div className="slot-inner-div">
-        {fullName}
-        {warn && <div className="warn" title="Deze persoon heeft niet aangeduit dat ze konden op deze shift.">⚠️</div>}
-      </div>
-      <select
-        onChange={event => {
-          event.preventDefault();
-          var performer = undefined;
-          if (event.target.value !== "") {
-            performer = event.target.value as Id<"users">;
-          }
-
-          setPerformer({
-            slot: slot._id,
-            performer,
-          })
-        }}
-        value={slot.performer ?? ""}
-      >
-        <option value="" aria-label="Niemand"></option>
-        <option disabled>-- kunnen --</option>
-        {...slot.selected_users.map(u => userToOption(u))}
-        <option disabled>-- kunnen NIET --</option>
-        {...slot.not_selected_users.map(u => userToOption(u))}
-      </select>
-    </label>);
   }
-  if (htmlData.length === 0) {
-    htmlData.push(<div>Nog geen shiften gemaakt. Gebruik "shifts bewerken" hierboven om er toe te voegen</div>);
-  }
-
   var htmlNotes = [];
   for (const user of users) {
     if (user.note) {
@@ -744,7 +823,7 @@ function AdminSetPerformer() {
       </div>
     )}
     <div className="columns-layout">
-      <div className="small-colum">
+      <div className={tableLayout ? "" : "small-colum"}>
         <p>
           Maak hier het volgende schema. Kies zelf personen voor elke shift of gebruik één van de
           AutoFill™ knoppen hieronder om automatisch de personen die kunnen en de minste shifts hebben
@@ -764,10 +843,9 @@ function AdminSetPerformer() {
           <button onClick={_ => autoSetPerformerUpcoming({
             replace: false,
           })}>AutoFill™ (enkel lege)</button>
+          <button onClick={_ => setTableLayout(!tableLayout)}>{tableLayout ? "Lijst layout" : "Tabel layout"}</button>
         </div>
-        <div className="schedule-container" >
-          {...htmlData}
-        </div>
+        {scheduleData}
         <hr/>
         <button
           onClick={_ => {
@@ -801,6 +879,7 @@ function AdminSetPerformer() {
       </div>
     </div>
   </div>);
+
 }
 
 function AdminEditUsers() {

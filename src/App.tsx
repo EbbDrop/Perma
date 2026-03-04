@@ -369,7 +369,7 @@ function Schedule() {
           }}
           value={slot.performer ?? ""}
           disabled={!editEnabled}
-          role={editEnabled ? "combobox" : "label"}
+          role={editEnabled ? "combobox" : "none"}
         >
           <option value="" aria-label="Niemand"></option>
           {...users.map(u => userToOption(u))}
@@ -409,7 +409,7 @@ function Schedule() {
         }
       </div>
       <div className="table-column">
-        <div>
+        <div className="sticky">
           <h2>Overzicht</h2>
           <CountsTable data={counts}/>
         </div>
@@ -796,10 +796,12 @@ function AdminSetPerformer() {
     if (tableLayout) {
       scheduleData = (<div className="table-holder">
         {AdminSetPerformerTable(slots, users, setPerformer)}
+        <br/>
       </div>);
     } else {
       scheduleData = (<div className="schedule-container">
         {...AdminSetPerformerList(slots, setPerformer)}
+        <hr/>
       </div>);
     }
   }
@@ -813,72 +815,109 @@ function AdminSetPerformer() {
     }
   }
 
-  return (<div className="main-layout">
-    {waitingOnSelection.length > 0 && (
-      <div className="waiting-on">
-        {waitingOnSelection.length === 1 ?
-          (<>{waitingOnSelection.map(u => u.name).join(", ")} moet nog invullen.</>) :
-          (<>{waitingOnSelection.map(u => u.name).join(", ")} moeten nog invullen.</>)
-        }
-      </div>
-    )}
-    <div className="columns-layout">
-      <div className={tableLayout ? "" : "small-colum"}>
-        <p>
-          Maak hier het volgende schema. Kies zelf personen voor elke shift of gebruik één van de
-          AutoFill™ knoppen hieronder om automatisch de personen die kunnen en de minste shifts hebben
-          te kiezen.
-        </p>
-        <br />
-        <p>
-          De selectie wordt automatisch opgeslagen en gedeeld met de andere perma
-          verantwoordelijken. Gebruik de "publiceer" knop vanonder om het schema te delen met de
-          rest van het kot.
-        </p>
-        <br />
-        <div className="admin-bulk-edit-buttons">
-          <button onClick={_ => autoSetPerformerUpcoming({
-            replace: true,
-          })}>AutoFill™ (alles)</button>
-          <button onClick={_ => autoSetPerformerUpcoming({
-            replace: false,
-          })}>AutoFill™ (enkel lege)</button>
-          <button onClick={_ => setTableLayout(!tableLayout)}>{tableLayout ? "Lijst layout" : "Tabel layout"}</button>
-        </div>
-        {scheduleData}
-        <hr/>
-        <button
-          onClick={_ => {
-            setDisablePublish(true);
-            publishUpcoming({now: DateTime.now().toISO()})}
-          }
-          id="publish"
-          disabled={disablePublish}
-        >
-          Publiceer
-        </button>
-      </div>
-      <div className="table-column">
+  const editPlane = <>
+    <p>
+      Maak hier het volgende schema. Kies zelf personen voor elke shift of gebruik één van de
+      AutoFill™ knoppen hieronder om automatisch de personen die kunnen en de minste shifts hebben
+      te kiezen.
+    </p>
+    <br />
+    <p>
+      De selectie wordt automatisch opgeslagen en gedeeld met de andere perma
+      verantwoordelijken. Gebruik de "publiceer" knop vanonder om het schema te delen met de
+      rest van het kot.
+    </p>
+    <br />
+    <div className="admin-bulk-edit-buttons">
+      <button onClick={_ => autoSetPerformerUpcoming({
+        replace: true,
+      })}>AutoFill™ (alles)</button>
+      <button onClick={_ => autoSetPerformerUpcoming({
+        replace: false,
+      })}>AutoFill™ (enkel lege)</button>
+      <button onClick={_ => setTableLayout(!tableLayout)}>{tableLayout ? "Lijst layout" : "Tabel layout"}</button>
+    </div>
+    {scheduleData}
+    <button
+      onClick={_ => {
+        setDisablePublish(true);
+        publishUpcoming({now: DateTime.now().toISO()})}
+      }
+      id="publish"
+      disabled={disablePublish}
+    >
+      Publiceer
+    </button>
+  </>;
+
+  const waitingOnHtml = (waitingOnSelection.length > 0) ? (
+    <div className="waiting-on">
+      {waitingOnSelection.length === 1 ?
+        (<>{waitingOnSelection.map(u => u.name).join(", ")} moet nog invullen.</>) :
+        (<>{waitingOnSelection.map(u => u.name).join(", ")} moeten nog invullen.</>)
+      }
+    </div>
+  ) : <></>;
+
+  if (tableLayout) {   
+    return (
+      <div className="main-layout">
+        {waitingOnHtml}
         <div>
-          {htmlNotes.length > 0 && (<div>
-            <h2>Opmerkingen</h2>
-            <ul>
-              {...htmlNotes}
-            </ul>
-            <br/>
-            <hr/>
-          </div>)}
           <div>
-            <h2>Overzicht deze week</h2>
-            <CountsTable data={currentCounts}/>
-            <hr/>
-            <h2>Overzicht</h2>
-            <CountsTable data={counts}/>
+            {editPlane}
+          </div>
+              <hr/>
+          <div className="columns-layout">
+            {htmlNotes.length > 0 && (<div>
+              <h2>Opmerkingen</h2>
+              <ul>
+                {...htmlNotes}
+              </ul>
+            </div>)}
+            <div className="table-column">
+              <h2>Overzicht deze week</h2>
+              <CountsTable data={currentCounts}/>
+            </div>
+            <div className="table-column">
+              <h2>Overzicht</h2>
+              <CountsTable data={counts}/>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>);
+    );
+  } else {
+    return (
+      <div className="main-layout">
+        {waitingOnHtml}
+        <div className="columns-layout">
+          <div className="small-colum">
+            {editPlane}
+          </div>
+          <div className="table-column">
+            <div>
+              {htmlNotes.length > 0 && (<div>
+                <h2>Opmerkingen</h2>
+                <ul>
+                  {...htmlNotes}
+                </ul>
+                <br/>
+                <hr/>
+              </div>)}
+              <div>
+                <h2>Overzicht deze week</h2>
+                <CountsTable data={currentCounts}/>
+                <hr/>
+                <h2>Overzicht</h2>
+                <CountsTable data={counts}/>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
 }
 
@@ -1069,7 +1108,7 @@ function FillIn() {
       </>}
     </div>
     <div className="table-column">
-      <div>
+      <div className="sticky">
         <h2>Opmerkingen</h2>
         <label>
           Opmerkingen voor de perma verantwoordelijken? Zet ze hier!

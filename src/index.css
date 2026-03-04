@@ -426,7 +426,7 @@ footer {
   width: 100%;
 }
 
-.table-column>* {
+.sticky {
   position: sticky;
   top: 1em;
 }
@@ -613,8 +613,6 @@ footer {
 
 .table-holder {
   overflow-x: auto;
-  /* Hack for tables inside a flex elemnt, it was late alright */
-  max-width: 95vw;
 }
 
 .spacius-table td,

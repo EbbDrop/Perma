@@ -38,9 +38,9 @@ function Loading() {
 export default function App() {
   const [useAltImg, _] = useState(() => Math.random() > 0.99);
 
-  var isAdmin = false;
-  var name = "";
-  var user;
+  let isAdmin = false;
+  let name = "";
+  let user;
   try {
     user = useQuery(api.usersAndGroups.user, {});
   } catch {}
@@ -186,11 +186,12 @@ function SignInForm() {
 }
 
 function Me({me}: {me: Doc<"users"> | undefined}) {
+  const updateUserName = useMutation(api.usersAndGroups.updateUserName);
+  const updateUserPassword = useMutation(api.usersAndGroups.updateUserPassword);
+
   if (me === undefined) {
     return <Loading />;
   }
-  const updateUserName = useMutation(api.usersAndGroups.updateUserName);
-  const updateUserPassword = useMutation(api.usersAndGroups.updateUserPassword);
 
   const baseUrl = import.meta.env.VITE_CONVEX_SITE_URL as string
   const calendarUrl = `${baseUrl}/calendar.ics?group=${me.group}&user=${me._id}`;
@@ -203,7 +204,7 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
           <label>
             Naam:
             <input
-              onBlur={e => updateUserName({
+              onBlur={e => void updateUserName({
                   name: e.target.value,
               })}
               defaultValue={me.name}
@@ -212,7 +213,7 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
           <button onClick={_ => {
             const password = window.prompt("Nieuw password");
             if (password !== null) {
-              updateUserPassword({password});
+              void updateUserPassword({password});
             }
           }}>verander password</button>
         </div>
@@ -236,10 +237,10 @@ function slotStrings(slot: Doc<"slots">) {
 
     const dayString = start.toLocaleString({ weekday: "long", day: "2-digit", month: "2-digit" });
     
-    var fullName = <span>{slot.name}</span>;
+    let fullName = <span>{slot.name}</span>;
     if (slot.showTime) {
       const startHour = start.toLocaleString(DateTime.TIME_SIMPLE);
-      var endHour;
+      let endHour;
       if (end.hasSame(start, "day")) {
         endHour = end.toLocaleString(DateTime.TIME_SIMPLE);
       } else {
@@ -253,7 +254,7 @@ function slotStrings(slot: Doc<"slots">) {
 }
 
 function farDateWarning(date: DateTime) {
-  let diff = Math.trunc(date.toLocal().diffNow("days").days);
+  const diff = Math.trunc(date.toLocal().diffNow("days").days);
   if (diff < 0 || diff >= 7) {
     if (diff < -1) {
       return `(${-diff} dagen geleden)`;
@@ -310,11 +311,11 @@ function Schedule() {
       if (slots === undefined) {
         return;
       }
-      let idx = slots.findIndex(s => s._id === args.slot);
+      const idx = slots.findIndex(s => s._id === args.slot);
       if (idx < 0) {
         return;
       }
-      var slot = structuredClone(slots[idx]);
+      const slot = structuredClone(slots[idx]);
       slot.performer = args.performer;
       slots[idx] = slot;
       local_store.setQuery(api.schedule.slots, {state: "published"}, slots);
@@ -328,9 +329,9 @@ function Schedule() {
     return <Loading />;
   }
 
-  var rightNow = [];
-  var htmlData = [];
-  var lastDayString = undefined;
+  const rightNow = [];
+  const htmlData = [];
+  let lastDayString = undefined;
 
   for (const slot of slots) {
     const { start, end, dayString, fullName } = slotStrings(slot);
@@ -357,12 +358,12 @@ function Schedule() {
         <select
           onChange={event => {
             event.preventDefault();
-            var performer = undefined;
+            let performer = undefined;
             if (event.target.value !== "") {
               performer = event.target.value as Id<"users">;
             }
 
-            setPerformer({
+            void setPerformer({
               slot: slot._id,
               performer,
             })
@@ -380,7 +381,7 @@ function Schedule() {
     htmlData.push(<h3>(Nog) geen shiften</h3>);
   }
 
-  var rightNowHtml = null;
+  let rightNowHtml = null;
   if (rightNow.length === 1) {
     rightNowHtml = (<div id="right-now" role="note">Heeft nu perma: <strong className="right-now-name">{rightNow[0].performerName}</strong> ({rightNow[0].slotName})</div>);
   } else if (rightNow.length > 1) {
@@ -400,7 +401,7 @@ function Schedule() {
           </p>) : (<p>
             Wissel je met iemand? Klik dan op de deze knop en pas het aan hierboven: 
             {" "}<button
-              onClick={_ => setEditEnabled(!editEnabled)}
+              onClick={_ => void setEditEnabled(!editEnabled)}
               className={editEnabled ? "button-active" : ""}
             >
               Pas schema aan
@@ -440,7 +441,7 @@ function AdminEditSlots() {
     if (idx < 0) {
       return;
     }
-    var slot = structuredClone(slots[idx]);
+    const slot = structuredClone(slots[idx]);
     if (args.data.end !== undefined) {
       slot.end = args.data.end;
     }
@@ -456,6 +457,9 @@ function AdminEditSlots() {
     if (args.data.showTime !== undefined) {
       slot.showTime = args.data.showTime;
     }
+    if (args.data.state !== undefined) {
+      slot.state = args.data.state;
+    }
     slots[idx] = slot;
     local_store.setQuery(api.schedule.slots, {state: "upcoming+hidden"}, slots);
   });
@@ -468,11 +472,11 @@ function AdminEditSlots() {
     return <Loading />;
   }
 
-  var htmlDataSlots = [];
-  var lastDayString = undefined;
+  const htmlDataSlots = [];
+  let lastDayString = undefined;
 
   const toLocal = (utc: string) => {
-    let date = DateTime.fromISO(utc).toLocal().toISO({includeOffset: false});
+    const date = DateTime.fromISO(utc).toLocal().toISO({includeOffset: false});
     if (date === null) {
       return undefined;
     }
@@ -491,7 +495,7 @@ function AdminEditSlots() {
         <span>{dayString}</span>
         <div className="day-title-buttons">
           <button onClick={_ => {
-            rangeEditUpcomingSlos({
+            void rangeEditUpcomingSlos({
                 startRange,
                 endRange,
                 moveDays: 1,
@@ -499,7 +503,7 @@ function AdminEditSlots() {
             })
           }}>copier naar volgende dag</button>
           <button onClick={_ => {
-            rangeEditUpcomingSlos({
+            void rangeEditUpcomingSlos({
                 startRange,
                 endRange,
                 moveDays: 0,
@@ -512,8 +516,8 @@ function AdminEditSlots() {
 
     function onChange(param: string, type: "dt" | "text" | "id") {
       return (event: ChangeEvent<HTMLInputElement, HTMLInputElement> | ChangeEvent<HTMLSelectElement, HTMLSelectElement>) => {
-        var data: Record<string, string | boolean | null> = {};
-        var value: string | boolean | null = "";
+        const data: Record<string, string | boolean | null> = {};
+        let value: string | boolean | null = "";
         if (type === "text") {
           value = event.target.value;
         } else if (type == "dt"){
@@ -522,7 +526,7 @@ function AdminEditSlots() {
           value = event.target.value || null;
         }
         data[param] = value;
-        updateUpcomingSlot({
+        void updateUpcomingSlot({
           slot: slot._id,
           data,
         })
@@ -552,7 +556,7 @@ function AdminEditSlots() {
       <label>
         Toon tijd in schema:
         <input type="checkbox" onChange={e => {
-          updateUpcomingSlot({
+          void updateUpcomingSlot({
             slot: slot._id,
             data: {
               showTime: e.target.checked,
@@ -563,7 +567,7 @@ function AdminEditSlots() {
       <label>
         Verborgen:
         <input type="checkbox" onChange={e => {
-          updateUpcomingSlot({
+          void updateUpcomingSlot({
             slot: slot._id,
             data: {
               state: e.target.checked ? "hidden" : "upcoming",
@@ -571,7 +575,7 @@ function AdminEditSlots() {
           })
         }} checked={slot.state == "hidden"}/>
       </label>
-      <button onClick={_ => deleteUpcomingSlot({slot: slot._id})}>verwijder</button>
+      <button onClick={_ => void deleteUpcomingSlot({slot: slot._id})}>verwijder</button>
     </div>);
   }
   if (htmlDataSlots.length === 0) {
@@ -580,19 +584,19 @@ function AdminEditSlots() {
 
   return (<>
     <div className="admin-bulk-edit-buttons">
-      <button onClick={_ => rangeEditUpcomingSlos({
+      <button onClick={_ => void rangeEditUpcomingSlos({
           startRange: DateTime.fromMillis(0).toUTC().toISO() as string,
           endRange: DateTime.fromObject({year: 5000}).toUTC().toISO() as string,
           moveDays: -7,
           action: "move"
       })}>Verplaats 1 week achteruit</button>
-      <button onClick={_ => rangeEditUpcomingSlos({
+      <button onClick={_ => void rangeEditUpcomingSlos({
           startRange: DateTime.fromMillis(0).toUTC().toISO() as string,
           endRange: DateTime.fromObject({year: 5000}).toUTC().toISO() as string,
           moveDays: 7,
           action: "move"
       })}>Verplaats 1 week vooruit</button>
-      <button onClick={_ => newUpcomingSlot({})}>Voeg nieuwe shift toe</button>
+      <button onClick={_ => void newUpcomingSlot({})}>Voeg nieuwe shift toe</button>
     </div>
     <div className="schedule-container">
       {...htmlDataSlots}
@@ -610,10 +614,10 @@ function AdminEditTypes() {
     return <Loading />;
   }
 
-  var htmlData = [];
+  const htmlData = [];
   for (const type of types) {
     htmlData.push(<div key={type._id}>
-      <input type="text" onBlur={e => updateType({
+      <input type="text" onBlur={e => void updateType({
           name: e.target.value,
           slotType: type._id,
       })} defaultValue={type.name} />
@@ -621,7 +625,7 @@ function AdminEditTypes() {
       <button onClick={_ => {
         const ok = window.confirm("Ben je zeker dat je de shift soort \"" + type.name + "\" wilt verwijderen?");
         if (ok === true) {
-          deleteType({slotType: type._id})
+          void deleteType({slotType: type._id})
         }
       }}>verwijder</button>
     </div>);
@@ -633,13 +637,13 @@ function AdminEditTypes() {
     <br/>
     <div className="edit-list">{...htmlData}</div>
     <br/>
-    <button onClick={_ => addType()}>Voeg shift toe</button>
+    <button onClick={_ => void addType()}>Voeg shift toe</button>
   </>);
 }
 
 function AdminSetPerformerList(slots: SlotWithSelected[], setPerformer: ReactMutation<typeof api.schedule.slotsSetPerformer>) {
-  var htmlData = [];
-  var lastDayString = undefined;
+  const htmlData = [];
+  let lastDayString = undefined;
 
   for (const slot of slots) {
 
@@ -660,12 +664,12 @@ function AdminSetPerformerList(slots: SlotWithSelected[], setPerformer: ReactMut
         <select
             onChange={event => {
                 event.preventDefault();
-                var performer = undefined;
+                let performer = undefined;
                 if (event.target.value !== "") {
                     performer = event.target.value as Id<"users">;
                 }
 
-                setPerformer({
+                void setPerformer({
                     slot: slot._id,
                     performer,
                 });
@@ -684,8 +688,8 @@ function AdminSetPerformerList(slots: SlotWithSelected[], setPerformer: ReactMut
 }
 
 function AdminSetPerformerTable(slots: SlotWithSelected[], users: Doc<"users">[], setPerformer: ReactMutation<typeof api.schedule.slotsSetPerformer>) {
-  var rows = [];
-  var lastDayString = undefined;
+  const rows = [];
+  let lastDayString = undefined;
 
   users.sort((a, b) => +a.assisted - +b.assisted)
 
@@ -720,12 +724,12 @@ function AdminSetPerformerTable(slots: SlotWithSelected[], users: Doc<"users">[]
               (performer ? " cell-selected" : "")
             }
             onClick={_ => {
-              setPerformer({performer: performer ? undefined : u._id, slot:slot._id})
+              void setPerformer({performer: performer ? undefined : u._id, slot:slot._id})
             }}
             onKeyDown={e => {
               if (e.code === "Enter") {
                 e.preventDefault();
-                setPerformer({performer: performer ? undefined : u._id, slot:slot._id})
+                void setPerformer({performer: performer ? undefined : u._id, slot:slot._id})
               }
             }}
             tabIndex={0}
@@ -754,11 +758,11 @@ function AdminSetPerformer() {
       if (slots === undefined) {
         return;
       }
-      let idx = slots.findIndex(s => s._id === args.slot);
+      const idx = slots.findIndex(s => s._id === args.slot);
       if (idx < 0) {
         return;
       }
-      var slot = structuredClone(slots[idx]);
+      const slot = structuredClone(slots[idx]);
       slot.performer = args.performer;
       slots[idx] = slot;
       local_store.setQuery(api.schedule.upcomingSlotsWithSelected, {}, slots);
@@ -774,7 +778,7 @@ function AdminSetPerformer() {
     return <Loading />;
   }
   const currentCounts = structuredClone(counts);
-  for (var t of currentCounts.types) {
+  for (const t of currentCounts.types) {
     for (const u of Object.keys(t.counts)) {
       t.counts[u as Id<"users">] = 0;
     }
@@ -782,7 +786,7 @@ function AdminSetPerformer() {
   }
 
   for (const slot of slots) {
-    let countIdx = currentCounts.types.findIndex(t => t._id === slot.type);
+    const countIdx = currentCounts.types.findIndex(t => t._id === slot.type);
     if (countIdx >= 0 && slot.performer !== undefined) {
       currentCounts.types[countIdx].counts[slot.performer] = (currentCounts.types[countIdx].counts[slot.performer] ?? 0) + 1;
       if (!(currentCounts.users.find(u => u._id === slot.performer)?.assisted ?? true)) {
@@ -791,7 +795,7 @@ function AdminSetPerformer() {
     }
   }
 
-  var scheduleData = <div>Er zijn nog geen shiften gemaakt. Gebruik "shifts bewerken" hierboven om er toe te voegen</div>;
+  let scheduleData = <div>Er zijn nog geen shiften gemaakt. Gebruik "shifts bewerken" hierboven om er toe te voegen</div>;
   if (slots.length > 0) {
     if (tableLayout) {
       scheduleData = (<div className="table-holder">
@@ -805,7 +809,7 @@ function AdminSetPerformer() {
       </div>);
     }
   }
-  var htmlNotes = [];
+  const htmlNotes = [];
   for (const user of users) {
     if (user.note) {
       htmlNotes.push(<li className="note-list-item">
@@ -829,10 +833,10 @@ function AdminSetPerformer() {
     </p>
     <br />
     <div className="admin-bulk-edit-buttons">
-      <button onClick={_ => autoSetPerformerUpcoming({
+      <button onClick={_ => void autoSetPerformerUpcoming({
         replace: true,
       })}>AutoFill™ (alles)</button>
-      <button onClick={_ => autoSetPerformerUpcoming({
+      <button onClick={_ => void autoSetPerformerUpcoming({
         replace: false,
       })}>AutoFill™ (enkel lege)</button>
       <button onClick={_ => setTableLayout(!tableLayout)}>{tableLayout ? "Lijst layout" : "Tabel layout"}</button>
@@ -841,7 +845,7 @@ function AdminSetPerformer() {
     <button
       onClick={_ => {
         setDisablePublish(true);
-        publishUpcoming({now: DateTime.now().toISO()})}
+        void publishUpcoming({now: DateTime.now().toISO()})}
       }
       id="publish"
       disabled={disablePublish}
@@ -934,12 +938,12 @@ function AdminEditUsers() {
     return <Loading />;
   }
 
-  var htmlData = [];
+  const htmlData = [];
   for (const user of users) {
     htmlData.push(<div>
       <div key={user._id} className="edit-row">
         <input
-          onBlur={e => updateUserName({
+          onBlur={e => void updateUserName({
             user: user._id,
             name: e.target.value,
           })}
@@ -950,7 +954,7 @@ function AdminEditUsers() {
           Omkaderde: 
           <input
             type="checkbox"
-            onChange={e => updateUser({
+            onChange={e => void updateUser({
               user: user._id,
               data: {assisted: e.target.checked},
             })}
@@ -961,7 +965,7 @@ function AdminEditUsers() {
           Admin: 
           <input
             type="checkbox"
-            onChange={e => updateUser({
+            onChange={e => void updateUser({
               user: user._id,
               data: {admin: e.target.checked},
             })}
@@ -972,14 +976,14 @@ function AdminEditUsers() {
         <button onClick={_ => {
           const password = window.prompt("Nieuw password");
           if (password !== null) {
-            updateUserPassword({password, user: user._id});
+            void updateUserPassword({password, user: user._id});
           }
         }}>verander password</button>
         {user._id == selfUser._id ? <div></div> : <button
           onClick={_ => {
             const response = window.prompt("Type \"verwijder " + user.name + "\" om de acount van " + user.name + " te verwijderen.");
             if (response === "verwijder " + user.name) {
-              deleteUser({user: user._id})
+              void deleteUser({user: user._id})
             }
           }}
         >verwijder</button>}
@@ -1000,10 +1004,10 @@ function AdminEditUsers() {
           onSubmit={(e) => {
             e.preventDefault();
             const formData = new FormData(e.target as HTMLFormElement);
-            const name = formData.get("name");
-            const password = formData.get("password");
+            const name = formData.get("name") as string;
+            const password = formData.get("password") as string;
             if (name !== null && password !== null) {
-              void addUser({name: name.toString(), password: password.toString()})
+              void addUser({name , password })
             }
             (e.target as HTMLFormElement).reset()
           }}
@@ -1033,12 +1037,12 @@ function Admin() {
 
 function FillIn() {
   const setSelectedSlot = useMutation(api.schedule.setSelectedSlot).withOptimisticUpdate((local_store, args) => {
-    let currentSelected = local_store.getQuery(api.schedule.selectedSlots, {});
+    const currentSelected = local_store.getQuery(api.schedule.selectedSlots, {});
     if (currentSelected === undefined) {
       return;
     }
 
-    var newSelected;
+    let newSelected;
     if (!args.selected) {
       newSelected = currentSelected.filter(s => s !== args.slot);
     } else {
@@ -1062,10 +1066,10 @@ function FillIn() {
     return <h3>Er is geen perma nodig op dit moment</h3>;
   }
 
-  var htmlData = [];
-  var lastDayString = undefined;
+  const htmlData = [];
+  let lastDayString = undefined;
 
-  var filledIn = note !== null;
+  let filledIn = note !== null;
   for (const slot of slots) {
     const { start, dayString, fullName } = slotStrings(slot);
 
@@ -1082,7 +1086,7 @@ function FillIn() {
         {fullName}
         <input type="checkbox" checked={checked} onChange={event => {
           event.preventDefault();
-          setSelectedSlot({
+          void setSelectedSlot({
             slot: slot._id,
             selected: event.target.checked,
           })
@@ -1117,7 +1121,7 @@ function FillIn() {
             className="notes"
             rows={5}
             defaultValue={note ?? undefined}
-            onBlur={e => setNote({note: e.target.value})}
+            onBlur={e => void setNote({note: e.target.value})}
             placeholder="..."
           >
           </textarea>

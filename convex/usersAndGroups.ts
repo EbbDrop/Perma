@@ -109,13 +109,13 @@ export const updateUser = mutation({
             throw Error("Invalid user");
         }
 
-        ctx.db.patch("users", args.user, args.data);
+        await ctx.db.patch("users", args.user, args.data);
     },
 });
 
 /**
- * Change the password of a user. If `user` is not given the password of the currently loged in user
- * is changed. Otherwise the given users password is changed (Only posible if the loged in user is
+ * Change the password of a user. If `user` is not given the password of the currently logged in user
+ * is changed. Otherwise, the given users password is changed (Only possible if the logged in user is
  * an admin).
  */
 export const updateUserPassword = mutation({
@@ -130,7 +130,7 @@ export const updateUserPassword = mutation({
             throw Error("Need to be admin to modify other persons password");
         }
 
-        var user = authUser;
+        let user = authUser;
         if (args.user !== undefined) {
             const otherUser = await ctx.db.get("users", args.user);
             if (otherUser === null) {
@@ -148,8 +148,8 @@ export const updateUserPassword = mutation({
 });
 
 /**
- * Change the name of a user. If `user` is not given the name of the currently loged in user
- * is changed. Otherwise the given users name is changed (Only posible if the loged in user is
+ * Change the name of a user. If `user` is not given the name of the currently logged in user
+ * is changed. Otherwise, the given users name is changed (Only possible if the logged in user is
  * an admin).
  */
 export const updateUserName = mutation({
@@ -164,7 +164,7 @@ export const updateUserName = mutation({
             throw Error("Need to be admin to modify other persons name");
         }
 
-        var user = authUser;
+        let user = authUser;
         if (args.user !== undefined) {
             const otherUser = await ctx.db.get("users", args.user);
             if (otherUser === null) {
@@ -231,9 +231,9 @@ export const deleteUser = mutation({
                 .eq("providerAccountId", id))
             .unique();
         if (account !== null) {
-            ctx.db.delete("authAccounts", account._id);
+            await ctx.db.delete("authAccounts", account._id);
         }
-        ctx.db.delete("users", args.user);
+        await ctx.db.delete("users", args.user);
     },
 });
 

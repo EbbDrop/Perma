@@ -30,7 +30,7 @@ http.route({
           group: group as Id<"group">,
       });
 
-      var nameCalendar = "Permanentie";
+      let nameCalendar = "Permanentie";
       if (!all) {
         nameCalendar += " ";
         nameCalendar += you.name;
@@ -54,7 +54,7 @@ http.route({
           continue;
         }
 
-        var name;
+        let name;
         if (all) {
           name = `${slot.performerUser.name} (${slot.name})`;
         } else {

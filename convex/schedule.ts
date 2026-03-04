@@ -153,7 +153,7 @@ export const bulkEditCounts = mutation({
         throw Error(`invlid user: ${user}`);
       }
 
-      updatePerformingCount(ctx, user, type, update);
+      await updatePerformingCount(ctx, user, type, update);
     }
   },
 })
@@ -187,8 +187,8 @@ export const transferCounts = mutation({
       .collect();
 
     for (const count of counts) {
-      updatePerformingCount(ctx, count.user, args.fromType, -count.count);
-      updatePerformingCount(ctx, count.user, args.toType, count.count);
+      await updatePerformingCount(ctx, count.user, args.fromType, -count.count);
+      await updatePerformingCount(ctx, count.user, args.toType, count.count);
     }
   },
 })
@@ -221,14 +221,14 @@ export const countsTable = query({
 
     const asistands = new Set(users.filter(u => !u.assisted).map(u => u._id));
 
-    var usersWithNonZeroCounts = new Set();
-    var typesWithCounts: CountData[] = [];
+    const usersWithNonZeroCounts = new Set();
+    const typesWithCounts: CountData[] = [];
     for (const type of types) {
       const rawCounts = await ctx.db.query("performingCount")
         .withIndex("by_type_user", q => q.eq("type", type._id))
         .collect();
       const counts = new Map(rawCounts.map(c => [c.user, c.count]));
-      var sum = 0;
+      let sum = 0;
       for (const [u, c] of counts.entries()) {
         if (c !== 0) {
           usersWithNonZeroCounts.add(u);
@@ -284,7 +284,7 @@ export const newUpcomingSlot = mutation({
       .order("desc")
       .first();
 
-    var start = DateTime.now().set({ hour: 8, minute: 0, second: 0, millisecond: 0});
+    let start = DateTime.now().set({ hour: 8, minute: 0, second: 0, millisecond: 0});
     if (lastSlot !== null) {
       const lastSlotEnd = DateTime.fromISO(lastSlot.end);
       if (lastSlotEnd.isValid) {
@@ -404,7 +404,7 @@ export const rangeEditUpcomingSlots = mutation({
     const startRange = DateTime.fromISO(args.startRange).toUTC().toISO() as string;
     const endRange = DateTime.fromISO(args.endRange).toUTC().toISO() as string;
 
-    var slotsToEdit = await ctx.db.query("slots")
+    let slotsToEdit = await ctx.db.query("slots")
       .withIndex("by_group_state", q => 
         q.eq("group", user.group)
           .eq("state", "upcoming")
@@ -514,7 +514,7 @@ export const autoSetPerformerUpcoming = mutation({
       .withIndex("by_group", (q) => q.eq("group", user.group))
       .collect();
 
-    var counts: Record<Id<"slotType">, Record<Id<"users">, number>> = {};
+    const counts: Record<Id<"slotType">, Record<Id<"users">, number>> = {};
     for (const type of types) {
       const rawCounts = await ctx.db.query("performingCount")
         .withIndex("by_type_user", q => q.eq("type", type._id))
@@ -546,12 +546,12 @@ export const autoSetPerformerUpcoming = mutation({
         continue;
       }
 
-      var selectedUser;
+      let selectedUser;
       if (slot.type === null) {
         selectedUser = selected_by[Math.floor(Math.random() * selected_by.length)].user;
       } else {
         const type = slot.type;
-        let countsAndUserIds = selected_by.map(s => ({count: counts[type][s.user] ?? 0, user: s.user}));
+        const countsAndUserIds = selected_by.map(s => ({count: counts[type][s.user] ?? 0, user: s.user}));
         countsAndUserIds.sort((a, b) => a.count - b.count);
         selectedUser = countsAndUserIds[0].user;
 
@@ -559,7 +559,7 @@ export const autoSetPerformerUpcoming = mutation({
         counts[type][selectedUser] = (counts[type][selectedUser] ?? 0) + 10;
       }
 
-      ctx.db.patch("slots", slot._id, {performer: selectedUser});
+      await ctx.db.patch("slots", slot._id, {performer: selectedUser});
     }
   },
 });
@@ -596,7 +596,7 @@ export const publishUpcoming = mutation({
       await ctx.db.delete("slots", slot._id);
     }
 
-    var slotsToPublish = await ctx.db.query("slots")
+    let slotsToPublish = await ctx.db.query("slots")
       .withIndex("by_group_state", q => 
         q.eq("group", user.group)
           .eq("state", "upcoming")
@@ -652,7 +652,7 @@ export const publishUpcoming = mutation({
       return null;
     }));
 
-    let counts = new Map<string, number>();
+    const counts = new Map<string, number>();
     for (const p of pairs) {
       if (p !== null) {
         counts.set(p, (counts.get(p) ?? 0) + 1)
@@ -661,14 +661,14 @@ export const publishUpcoming = mutation({
 
     for (const [p, c] of counts) {
       const [performer, type] = p.split("|");
-      updatePerformingCount(ctx, performer as Id<"users">, type as Id<"slotType">, c);
+      await updatePerformingCount(ctx, performer as Id<"users">, type as Id<"slotType">, c);
     }
 
     const users = await ctx.db.query("users")
       .withIndex("by_group", q => q.eq("group", user.group))
       .collect();
     for (const user of users) {
-      ctx.db.patch("users", user._id, {note: undefined});
+      await ctx.db.patch("users", user._id, {note: undefined});
     }
   }
 });
@@ -683,7 +683,7 @@ export const slots = query({
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx);
 
-    var slots = await ctx.db.query("slots")
+    let slots = await ctx.db.query("slots")
       .withIndex("by_group_state", (q) => q.eq("group", user.group).eq("state", (args.state === "published") ? "published" : "upcoming"))
       .collect();
     if (args.state === "upcoming+hidden") {
@@ -746,11 +746,11 @@ export const waitingOnSelection = query({
   handler: async (ctx) => {
     const authUser = await getAuthUser(ctx);
 
-    var users = await ctx.db.query("users")
+    const users = await ctx.db.query("users")
       .withIndex("by_group", q => q.eq("group", authUser.group))
       .collect();
 
-    var waitingOn: {_id: Id<"users">, name: string}[] = [];
+    const waitingOn: {_id: Id<"users">, name: string}[] = [];
     for (const user of users) {
       if (user.note !== undefined || user.assisted) {
         continue;
@@ -808,12 +808,12 @@ export const setSelectedSlot = mutation({
 
     if (args.selected) {
       if (exsisting.length === 0) {
-        ctx.db.insert("selectedSlots", {user: authUser._id,slot: args.slot});
+        await ctx.db.insert("selectedSlots", {user: authUser._id,slot: args.slot});
       }
     } else {
       /// Only one should ever exist, but still looping in case of.
       for (const s of exsisting) {
-        ctx.db.delete("selectedSlots", s._id);
+        await ctx.db.delete("selectedSlots", s._id);
       }
     }
   },
@@ -863,7 +863,7 @@ export const slotsForCalendar = query({
       .collect();
 
     const slotsWithUsers = slots.map(async (slot) => {
-      var performerUser = null;
+      let performerUser = null;
       if (slot.performer !== undefined) {
         const rawUser = await ctx.db.get("users", slot.performer);
         if (rawUser !== null) {

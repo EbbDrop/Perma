@@ -617,7 +617,7 @@ footer {
 
 .spacius-table td,
 .spacius-table th {
-  min-width: 7em;
+  width: 7em;
 }
 
 .table-empty {

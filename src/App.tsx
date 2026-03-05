@@ -798,15 +798,19 @@ function AdminSetPerformer() {
   let scheduleData = <div>Er zijn nog geen shiften gemaakt. Gebruik "shifts bewerken" hierboven om er toe te voegen</div>;
   if (slots.length > 0) {
     if (tableLayout) {
-      scheduleData = (<div className="table-holder">
-        {AdminSetPerformerTable(slots, users, setPerformer)}
+      scheduleData = (<>
+        <div className="table-holder">
+          {AdminSetPerformerTable(slots, users, setPerformer)}
+        </div>
         <br/>
-      </div>);
+      </>);
     } else {
-      scheduleData = (<div className="schedule-container">
-        {...AdminSetPerformerList(slots, setPerformer)}
+      scheduleData = (<>
+        <div className="schedule-container">
+          {...AdminSetPerformerList(slots, setPerformer)}
+        </div>
         <hr/>
-      </div>);
+      </>);
     }
   }
   const htmlNotes = [];

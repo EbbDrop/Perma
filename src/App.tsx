@@ -280,7 +280,7 @@ function CountsTable({ data }: { data: CountsData }) {
       </thead>
       <tbody>
         {...data.users.map(u => (<tr>
-          <td>{u.name}</td>
+          <td scope="row">{u.name}</td>
           {...data.types.map(t => (<td>
             {t.counts[u._id] ?? 0}
           </td>))}
@@ -290,7 +290,7 @@ function CountsTable({ data }: { data: CountsData }) {
       </tbody>
       <tfoot>
         <tr className="table-important">
-          <td>Gemiddelde</td>
+          <td scope="row">Gemiddelde</td>
           {...data.types.map(t => (<td>
             {(t.sum / data.out_of).toFixed(1)}
           </td>))}
@@ -699,9 +699,9 @@ function AdminSetPerformerTable(slots: SlotWithSelected[], users: Doc<"users">[]
     if (lastDayString !== dayString) {
       lastDayString = dayString;
       rows.push(<tr>
-        <th colSpan={1} className="day-title">{dayString} {farDateWarning(start)}</th>
+        <th className="day-title" scope="col">{dayString} {farDateWarning(start)}</th>
         {...users.map(u => 
-          <th className="name-header" key={u._id}>{u.name}</th>
+          <th className="name-header" scope="col" key={u._id}>{u.name}</th>
         )}
       </tr>);
     }
@@ -710,7 +710,7 @@ function AdminSetPerformerTable(slots: SlotWithSelected[], users: Doc<"users">[]
         && slot.not_selected_users.map(u => u._id).includes(slot.performer);
 
     rows.push(<tr key={slot._id} className="">
-        <th className="slot-inner-div">
+        <th className="slot-inner-div" scope="row">
             {fullName}
             {warn && <div className="warn" title="Deze persoon heeft niet aangeduit dat ze konden op deze shift.">⚠️</div>}
         </th>
@@ -734,7 +734,8 @@ function AdminSetPerformerTable(slots: SlotWithSelected[], users: Doc<"users">[]
             }}
             tabIndex={0}
             role="button"
-          >{selected ? "●" : ""}</td>;
+            aria-label={performer ? "geselecteerd" : (selected ? "kan" : "kan niet")}
+          ><span aria-hidden="true">{selected ? "●" : ""}</span></td>;
         })}
     </tr>);
   }

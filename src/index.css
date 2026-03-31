@@ -796,11 +796,11 @@ footer {
   }
 }
 
-/* @font-face { */
-/* font-family: 'ComicSans'; */
-/* src: url("./comic_sans.ttf"); */
-/* } */
+@font-face {
+  font-family: 'ComicSans';
+  src: url("./comic_sans.ttf");
+}
 
-/* * { */
-/* font-family: "ComicSans", cursive !important; */
-/* } */
+* {
+  font-family: "ComicSans", cursive !important;
+}

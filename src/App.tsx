@@ -36,9 +36,6 @@ function Loading() {
 }
 
 function addEmojiToUser(user: string): string {
-  if (!window.location.href.includes("1april")) {
-    return user;
-  }
   switch (user) {
     case "Arthur":
       return user + " 💃";

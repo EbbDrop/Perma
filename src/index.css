@@ -795,3 +795,12 @@ footer {
     transform: translateY(-100%);
   }
 }
+
+/* @font-face { */
+/* font-family: 'ComicSans'; */
+/* src: url("./comic_sans.ttf"); */
+/* } */
+
+/* * { */
+/* font-family: "ComicSans", cursive !important; */
+/* } */

@@ -35,6 +35,52 @@ function Loading() {
   </div>)
 }
 
+function addEmojiToUser(user: string): string {
+  if (!window.location.href.includes("1april")) {
+    return user;
+  }
+  switch (user) {
+    case "Arthur":
+      return user + " 💃";
+    case "Beren":
+      return user + " 🐻";
+    case "Boris":
+      return user + " 🍗";
+    case "Bram":
+      return user + " 🤡";
+    case "Carlo":
+      return user + " 🎲";
+    case "Ebbe":
+      return user + " 🪵";
+    case "Elisa":
+      return user + " 👻";
+    case "Enae":
+      return user + " 🍺";
+    case "Estée":
+      return user + " 🫖";
+    case "Linde":
+      return user + " 🚸";
+    case "Liske":
+      return user + " 📃";
+    case "Rhune":
+      return user + " 🍆";
+    case "Robin":
+      return user + " 💊";
+    case "Sterre":
+      return user + " ⭐";
+    case "Tibe":
+      return user + " 🏐";
+    case "Rosalie":
+      return user + " 🧶";
+    case "Vero":
+      return user + " 💅";
+    case "Lara":
+      return user + " 🧮";
+    default:
+      return user;
+  }
+}
+
 export default function App() {
   const [useAltImg, _] = useState(() => Math.random() > 0.99);
 
@@ -280,7 +326,7 @@ function CountsTable({ data }: { data: CountsData }) {
       </thead>
       <tbody>
         {...data.users.map(u => (<tr>
-          <td scope="row">{u.name}</td>
+          <td scope="row">{addEmojiToUser(u.name)}</td>
           {...data.types.map(t => (<td>
             {t.counts[u._id] ?? 0}
           </td>))}
@@ -425,7 +471,7 @@ function userToOption(user: {_id: Id<"users">, name: string}): ReactElement {
       value={user._id}
       key={user._id}
     >
-      {user.name}
+      {addEmojiToUser(user.name)}
     </option>
   );
 }

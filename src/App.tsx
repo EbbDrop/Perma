@@ -426,9 +426,9 @@ function Schedule() {
 
   let rightNowHtml = null;
   if (rightNow.length === 1) {
-    rightNowHtml = (<div id="right-now" role="note">Heeft nu perma: <strong className="right-now-name">{rightNow[0].performerName}</strong> ({rightNow[0].slotName})</div>);
+    rightNowHtml = (<div id="right-now" role="note">Heeft nu perma: <strong className="right-now-name">{addEmojiToUser(rightNow[0].performerName)}</strong> ({rightNow[0].slotName})</div>);
   } else if (rightNow.length > 1) {
-    rightNowHtml = (<div id="right-now" role="note">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{e.performerName}</strong></span>)]).slice(1)}</div>);
+    rightNowHtml = (<div id="right-now" role="note">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{addEmojiToUser(e.performerName)}</strong></span>)]).slice(1)}</div>);
   }
 
   return (<div className="main-layout">

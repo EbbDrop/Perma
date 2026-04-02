@@ -35,49 +35,6 @@ function Loading() {
   </div>)
 }
 
-function addEmojiToUser(user: string): string {
-  switch (user) {
-    case "Arthur":
-      return user + " 💃";
-    case "Beren":
-      return user + " 🐻";
-    case "Boris":
-      return user + " 🍗";
-    case "Bram":
-      return user + " 🤡";
-    case "Carlo":
-      return user + " 🎲";
-    case "Ebbe":
-      return user + " 🪵";
-    case "Elisa":
-      return user + " 👻";
-    case "Enae":
-      return user + " 🍺";
-    case "Estée":
-      return user + " 🫖";
-    case "Linde":
-      return user + " 🚸";
-    case "Liske":
-      return user + " 📃";
-    case "Rhune":
-      return user + " 🍆";
-    case "Robin":
-      return user + " 💊";
-    case "Sterre":
-      return user + " ⭐";
-    case "Tibe":
-      return user + " 🏐";
-    case "Rosalie":
-      return user + " 🧶";
-    case "Vero":
-      return user + " 💅";
-    case "Lara":
-      return user + " 🧮";
-    default:
-      return user;
-  }
-}
-
 export default function App() {
   const [useAltImg, _] = useState(() => Math.random() > 0.99);
 
@@ -323,7 +280,7 @@ function CountsTable({ data }: { data: CountsData }) {
       </thead>
       <tbody>
         {...data.users.map(u => (<tr>
-          <td scope="row">{addEmojiToUser(u.name)}</td>
+          <td scope="row">{u.name}</td>
           {...data.types.map(t => (<td>
             {t.counts[u._id] ?? 0}
           </td>))}
@@ -426,9 +383,9 @@ function Schedule() {
 
   let rightNowHtml = null;
   if (rightNow.length === 1) {
-    rightNowHtml = (<div id="right-now" role="note">Heeft nu perma: <strong className="right-now-name">{addEmojiToUser(rightNow[0].performerName)}</strong> ({rightNow[0].slotName})</div>);
+    rightNowHtml = (<div id="right-now" role="note">Heeft nu perma: <strong className="right-now-name">{rightNow[0].performerName}</strong> ({rightNow[0].slotName})</div>);
   } else if (rightNow.length > 1) {
-    rightNowHtml = (<div id="right-now" role="note">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{addEmojiToUser(e.performerName)}</strong></span>)]).slice(1)}</div>);
+    rightNowHtml = (<div id="right-now" role="note">Hebben nu perma: {...rightNow.flatMap(e => [", ", (<span>{e.slotName}: <strong className="right-now-name">{e.performerName}</strong></span>)]).slice(1)}</div>);
   }
 
   return (<div className="main-layout">
@@ -468,7 +425,7 @@ function userToOption(user: {_id: Id<"users">, name: string}): ReactElement {
       value={user._id}
       key={user._id}
     >
-      {addEmojiToUser(user.name)}
+      {user.name}
     </option>
   );
 }

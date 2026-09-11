@@ -26,6 +26,7 @@ export default defineSchema({
 
   group: defineTable({
     name: v.string(),
+    timezone: v.optional(v.string()),
   }),
 
   slotType: defineTable({

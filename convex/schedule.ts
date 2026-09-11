@@ -696,8 +696,8 @@ export const slots = query({
 });
 
 export type SlotWithSelected = Doc<"slots"> & {
-  selected_users: {_id: Id<"users">, name: string}[],
-  not_selected_users: {_id: Id<"users">, name: string}[],
+  selected_users: {_id: Id<"users">, name: string, image: string | undefined}[],
+  not_selected_users: {_id: Id<"users">, name: string, image: string | undefined}[],
 };
 /**
  * @returns The list of upcoming slots with the users have and have not selected atached as extra
@@ -718,6 +718,7 @@ export const upcomingSlotsWithSelected = query({
     const users = rawUsers.map(u => ({
       _id: u._id,
       name: u.name,
+      image: u.image,
     }));
 
     const slotsWithUsers = slots.map(async (slot) => {

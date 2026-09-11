@@ -197,6 +197,44 @@ export const updateUserName = mutation({
     },
 });
 
+export const updateUserImage = mutation({
+    args: {
+        user: v.optional(v.id("users")),
+        image: v.string()
+    },
+
+    handler: async (ctx, args) => {
+        const authUser = await getAuthUser(ctx);
+        if (args.user !== undefined && !authUser.admin) {
+            throw Error("Need to be admin to modify other persons name");
+        }
+
+        let user = authUser;
+        if (args.user !== undefined) {
+            const otherUser = await ctx.db.get("users", args.user);
+            if (otherUser === null) {
+                throw Error("Invalid user");
+            }
+            user = otherUser;
+        }
+
+        let newImage = "";
+        if (args.image.length === 0) {
+            return;
+        } else {
+            const segmenter = new Intl.Segmenter();
+            const firstSegment = segmenter.segment(args.image).containing(0);
+
+            if (firstSegment !== undefined) {
+                newImage = firstSegment.segment;
+            }
+        }
+
+
+        await ctx.db.patch("users", user._id, { image: newImage });
+    },
+});
+
 /**
  * Delete a user, only available to admins.
  */

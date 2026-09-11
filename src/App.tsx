@@ -11,12 +11,15 @@ import {
 } from "convex/react";
 import { api } from "../convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
-import { ChangeEvent, ReactElement, useEffect, useState } from "react";
+
+import { Doc, Id } from "../convex/_generated/dataModel";
+import { CountsData, SlotWithSelected } from "../convex/schedule";
+
+import { ChangeEvent, ReactElement, useEffect, useState, useRef } from "react";
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router";
 import { DateTime } from "luxon";
 import useLocalStorageState from 'use-local-storage-state';
-import { Doc, Id } from "../convex/_generated/dataModel";
-import { CountsData, SlotWithSelected } from "../convex/schedule";
+
 import EtnaImg from "./static/etna.svg?react";
 import EtnaImgAlt from "./static/etnaAlt.svg?react";
 import LogoLight from "./static/logoLight.svg?react";
@@ -40,6 +43,7 @@ export default function App() {
 
   let isAdmin = false;
   let name = "";
+  let icon = <></>;
   let user;
   try {
     user = useQuery(api.usersAndGroups.user, {});
@@ -48,6 +52,9 @@ export default function App() {
   if (user !== undefined) {
     isAdmin = user.admin;
     name = user.name;
+    if (user.image !== undefined && user.image.length >= 0) {
+      icon = (<span>{user.image}&nbsp;</span>);
+    }
   }
   
   return (
@@ -63,6 +70,7 @@ export default function App() {
             <NavLink to="/admin" end>Admin</NavLink> : null
           }
           <span id="sign-out">
+            {icon}
             <NavLink to="/me" end>{name}</NavLink>
             {" "}
             <SignOutButton/>
@@ -83,7 +91,7 @@ export default function App() {
               </>}/>
               <Route path="me" element={<>
                 <title>Perma | Ik</title>
-                <Me me={user}/>
+                <Me/>
               </>}/>
               <Route path="admin" element={<Admin />}>
                 <Route index element={<>
@@ -185,9 +193,37 @@ function SignInForm() {
   );
 }
 
-function Me({me}: {me: Doc<"users"> | undefined}) {
+function userToString(user: {name: string, image?: string}): string {
+  if (user.image !== undefined && user.image.length >= 0) {
+    return user.image + " " + user.name;
+  } else {
+    return user.name
+  }
+}
+
+function Me() {
+  const me = useQuery(api.usersAndGroups.user, {});
+
   const updateUserName = useMutation(api.usersAndGroups.updateUserName);
   const updateUserPassword = useMutation(api.usersAndGroups.updateUserPassword);
+
+  const imageRef = useRef<HTMLInputElement>(null)
+  const updateUserImage = useMutation(api.usersAndGroups.updateUserImage)
+    .withOptimisticUpdate((local_store, args) => {
+      const me = local_store.getQuery(api.usersAndGroups.user, {});
+      if (me === undefined) {
+        return;
+      }
+      const newMe = structuredClone(me);
+      newMe.image = args.image;
+      local_store.setQuery(api.usersAndGroups.user, {}, newMe);
+    });
+
+  useEffect(() => {
+      if (imageRef.current !== null && imageRef.current == document.activeElement) {
+        imageRef.current.select();
+      }
+  }, [me?.image]);
 
   if (me === undefined) {
     return <Loading />;
@@ -208,6 +244,18 @@ function Me({me}: {me: Doc<"users"> | undefined}) {
                   name: e.target.value,
               })}
               defaultValue={me.name}
+            />
+          </label>
+          <label>
+            Emoji:
+            <input
+              size={1}
+              ref={imageRef}
+              onFocus={e => e.target.select()}
+              onChange={e => void updateUserImage({
+                  image: e.target.value,
+              })}
+              value={me.image ?? ""}
             />
           </label>
           <button onClick={_ => {
@@ -280,7 +328,7 @@ function CountsTable({ data }: { data: CountsData }) {
       </thead>
       <tbody>
         {...data.users.map(u => (<tr>
-          <td scope="row">{u.name}</td>
+          <td scope="row">{userToString(u)}</td>
           {...data.types.map(t => (<td>
             {t.counts[u._id] ?? 0}
           </td>))}
@@ -419,13 +467,13 @@ function Schedule() {
   </div>);
 }
 
-function userToOption(user: {_id: Id<"users">, name: string}): ReactElement {
+function userToOption(user: {_id: Id<"users">, name: string, image?: string}): ReactElement {
   return (
     <option
       value={user._id}
       key={user._id}
     >
-      {user.name}
+      {userToString(user)}
     </option>
   );
 }

@@ -1,6 +1,7 @@
 import { getAuthUserId, createAccount, modifyAccountCredentials } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 import { QueryCtx, query, mutation, ActionCtx } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 import { idFromGroupAndName } from "./auth";
 
 /**
@@ -19,15 +20,15 @@ export async function getAuthUser(ctx: QueryCtx) {
 }
 
 /**
- * Get the group of the currently logged in user, or throw an error if not logged in.
+ * Get the user and group of the currently logged in user, or throw an error if not logged in.
  */
-async function getAuthGroup(ctx: QueryCtx) {
+export async function getAuthUserGroup(ctx: QueryCtx): Promise<[Doc<"users">, Doc<"group">]> {
     const user = await getAuthUser(ctx);
     const group = await ctx.db.get("group", user.group);
     if (group === null) {
         throw Error("Invalid group for valid user???");
     }
-    return group;
+    return [user, group];
 }
 
 /**
@@ -46,7 +47,7 @@ export const allGroups = query({
 export const groupInfo = query({
     args: {},
     handler: async (ctx) => {
-        const group = getAuthGroup(ctx);
+        const [_, group] = await getAuthUserGroup(ctx);
         return group;
     },
 });

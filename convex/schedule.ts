@@ -2,7 +2,7 @@ import { v } from "convex/values";
 import { query, mutation, MutationCtx } from "./_generated/server";
 import { Id, Doc } from "./_generated/dataModel";
 import { DateTime } from "luxon";
-import { getAuthUser } from "./usersAndGroups";
+import { getAuthUser, getAuthUserGroup } from "./usersAndGroups";
 
 /**
  * Add a new slot type
@@ -274,7 +274,7 @@ function compareSlots(a: Doc<"slots">, b: Doc<"slots">) {
 export const newUpcomingSlot = mutation({
   args: {},
   handler: async (ctx) => {
-    const user = await getAuthUser(ctx);
+    const [user, group] = await getAuthUserGroup(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");     
     }
@@ -284,14 +284,13 @@ export const newUpcomingSlot = mutation({
       .order("desc")
       .first();
 
-    let start = DateTime.now().set({ hour: 8, minute: 0, second: 0, millisecond: 0});
+    let start = DateTime.now().setZone(group.timezone).set({ hour: 8, minute: 0, second: 0, millisecond: 0});
     if (lastSlot !== null) {
-      const lastSlotEnd = DateTime.fromISO(lastSlot.end);
+      const lastSlotEnd = DateTime.fromISO(lastSlot.end).setZone(group.timezone);
       if (lastSlotEnd.isValid) {
         start = lastSlotEnd;
       }
     }
-    start = start.toUTC();
     const end = start.plus({ hours: 1 });
 
     return await ctx.db.insert("slots", {
@@ -299,8 +298,8 @@ export const newUpcomingSlot = mutation({
         type: null,
         group: user.group,
         showTime: true,
-        start: start.toISO(),
-        end: end.toISO(),
+        start: start.toISO() as string,
+        end: end.toISO() as string,
         state: "upcoming",
     });
   }
@@ -325,7 +324,7 @@ export const updateUpcomingSlot = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
+    const [user, group] = await getAuthUserGroup(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");     
     }
@@ -336,8 +335,8 @@ export const updateUpcomingSlot = mutation({
     }
 
     if (args.data.start !== undefined) {
-      const start = DateTime.fromISO(args.data.start).toUTC();
-      const end = DateTime.fromISO(slot.end).toUTC();
+      const start = DateTime.fromISO(args.data.start).setZone(group.timezone);
+      const end = DateTime.fromISO(slot.end).setZone(group.timezone);
       if (end < start) {
         args.data.end = start.toISO() as string;
       }
@@ -345,8 +344,8 @@ export const updateUpcomingSlot = mutation({
       args.data.start = start.toISO() as string;
     }
     if (args.data.end !== undefined) {
-      const end = DateTime.fromISO(args.data.end).toUTC();
-      const start = DateTime.fromISO(slot.start).toUTC();
+      const end = DateTime.fromISO(args.data.end).setZone(group.timezone);
+      const start = DateTime.fromISO(slot.start).setZone(group.timezone);
       if (end < start) {
         args.data.start = end.toISO() as string;
       }
@@ -396,13 +395,13 @@ export const rangeEditUpcomingSlots = mutation({
     action: v.union(v.literal("move"), v.literal("copy"), v.literal("delete"))
   },
   handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
+    const [user, group] = await getAuthUserGroup(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");     
     }
 
-    const startRange = DateTime.fromISO(args.startRange).toUTC().toISO() as string;
-    const endRange = DateTime.fromISO(args.endRange).toUTC().toISO() as string;
+    const startRange = DateTime.fromISO(args.startRange).setZone(group.timezone).toISO() as string;
+    const endRange = DateTime.fromISO(args.endRange).setZone(group.timezone).toISO() as string;
 
     let slotsToEdit = await ctx.db.query("slots")
       .withIndex("by_group_state", q => 
@@ -423,8 +422,8 @@ export const rangeEditUpcomingSlots = mutation({
     slotsToEdit.sort(compareSlots);
 
     const movedTimes = (slot: Doc<"slots">) => ({
-      start: DateTime.fromISO(slot.start).plus({days: args.moveDays}).toUTC().toISO() as string,
-      end: DateTime.fromISO(slot.end).plus({days: args.moveDays}).toUTC().toISO() as string,
+      start: DateTime.fromISO(slot.start).setZone(group.timezone).plus({days: args.moveDays}).toISO() as string,
+      end: DateTime.fromISO(slot.end).setZone(group.timezone).plus({days: args.moveDays}).toISO() as string,
     });
     
     switch (args.action) {
@@ -578,13 +577,13 @@ export const publishUpcoming = mutation({
     now: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
+    const [user, group] = await getAuthUserGroup(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");     
     }
 
 
-    const startToday = DateTime.fromISO(args.now).startOf('day').toUTC().toISO() as string;
+    const startToday = DateTime.fromISO(args.now).startOf('day').setZone(group.timezone).toISO() as string;
 
     const oldSlots = await ctx.db.query("slots")
       .withIndex("by_group_state", q => q.eq("group", user.group)
@@ -610,8 +609,8 @@ export const publishUpcoming = mutation({
       .collect());
 
     const pairs = await Promise.all(slotsToPublish.map(async slot => {
-      const start = DateTime.fromISO(slot.start).plus({weeks: 1}).toUTC().toISO() as string;
-      const end = DateTime.fromISO(slot.end).plus({weeks: 1}).toUTC().toISO() as string;
+      const start = DateTime.fromISO(slot.start).setZone(group.timezone).plus({weeks: 1}).toISO() as string;
+      const end = DateTime.fromISO(slot.end).setZone(group.timezone).plus({weeks: 1}).toISO() as string;
       await ctx.db.insert("slots", {
           start,
           end,

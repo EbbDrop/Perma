@@ -8,14 +8,14 @@ export default defineConfig({
   plugins: [react(), svgr()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
   build: {
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html'),
-        github_spa_hack: path.resolve(__dirname, '404.html'),
+        main: path.resolve(import.meta.dirname, 'index.html'),
+        github_spa_hack: path.resolve(import.meta.dirname, '404.html'),
       },
     },
   },

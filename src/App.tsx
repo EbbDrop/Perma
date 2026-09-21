@@ -1029,7 +1029,7 @@ function AdminEditUsers() {
           />
         </label>
         <button onClick={_ => {
-          const password = window.prompt("Nieuw password");
+          const password = window.prompt(`Nieuw password voor ${user.name}`);
           if (password !== null) {
             void updateUserPassword({password, user: user._id});
           }

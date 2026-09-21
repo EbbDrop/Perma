@@ -392,10 +392,12 @@ function Schedule() {
     if (isHappeningNow && slot.performer !== undefined) {
       const performer = users.find(u => u._id == slot.performer);
 
-      rightNow.push({
-        slotName: slot.name,
-        performerName: performer?.name ?? "ERROR",
-      })
+      if (performer !== undefined) {
+        rightNow.push({
+          slotName: slot.name,
+          performerName: userToString(performer),
+        })
+      }
     }
 
     const you = slot.performer === user._id;

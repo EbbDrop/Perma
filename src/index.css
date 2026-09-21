@@ -337,6 +337,8 @@ select {
 
 select:disabled {
   appearance: none;
+  /* Needed for chrome */
+  opacity: 1.0;
 }
 
 textarea {

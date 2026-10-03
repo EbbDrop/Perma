@@ -3,7 +3,7 @@ import { auth } from "./auth";
 import { api } from "./_generated/api";
 import { httpAction } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
-import ical from "ical-generator";
+import ical, { ICalEventStatus } from "ical-generator";
 import { DateTime } from "luxon";
 
 const http = httpRouter();
@@ -60,7 +60,7 @@ http.route({
         } else {
           name = `${slot.name}`;
         }
-        calendar.createEvent({
+        const e = calendar.createEvent({
           summary: name,
 
           start: DateTime.fromISO(slot.start),
@@ -71,6 +71,11 @@ http.route({
           id: slot._id,
           stamp: DateTime.fromMillis(slot._creationTime),
         });
+
+        if (you.name === "Ebbe") {
+          e.summary(e.summary() + "v1");
+          e.status(ICalEventStatus.TENTATIVE);
+        }
       }
 
       return new Response(calendar.toString(), {

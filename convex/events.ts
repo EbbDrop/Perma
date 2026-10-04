@@ -93,13 +93,18 @@ export const updateEvent = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
+    const [user,group] = await getAuthUserGroup(ctx);
     if (!user.admin) {
       throw Error("You need to be admin");
     }
     const event = await ctx.db.get("event", args.event);
     if (event === null || event.group !== user.group) {
       throw Error("Invalid event");
+    }
+
+    if (args.data.start !== undefined) {
+      const start = DateTime.fromISO(args.data.start).setZone(group.timezone);
+      args.data.start = start.toISO() as string;
     }
 
     return await ctx.db.patch("event", args.event, args.data);

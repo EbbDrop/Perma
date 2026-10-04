@@ -18,8 +18,6 @@ http.route({
       const url = new URL(request.url);
       const user = url.searchParams.get("user");
       const group = url.searchParams.get("group");
-      const all = false;
-      const showEvents = false;
       if (user === null || group === null) {
         return new Response("Need to specify group and user", {
           status: 400
@@ -32,7 +30,7 @@ http.route({
       });
 
       let nameCalendar = "Permanentie";
-      if (!all) {
+      if (!you.calendarSettings.showAllSlots) {
         nameCalendar += " ";
         nameCalendar += you.name;
       }
@@ -51,12 +49,12 @@ http.route({
         if (slot.performerUser === null) {
           continue;
         }
-        if (!all && !slot.is_you) {
+        if (!you.calendarSettings.showAllSlots && !slot.is_you) {
           continue;
         }
 
         let name;
-        if (all) {
+        if (you.calendarSettings.showAllSlots) {
           name = `${slot.performerUser.name} (${slot.name})`;
         } else {
           name = `Perma ${slot.name}`;
@@ -74,23 +72,24 @@ http.route({
         });
       }
 
-      if (showEvents) {
-        const events = await ctx.runQuery(api.events.eventsForCalendar, {
-          user: user as Id<"users">,
-          group: group as Id<"group">,
-        });
+      const events = await ctx.runQuery(api.events.eventsForCalendar, {
+        user: user as Id<"users">,
+        group: group as Id<"group">,
+      });
 
-        for (const event of events) {
-          calendar.createEvent({
-            summary: event.name,
-            description: event.description,
-
-            start: DateTime.fromISO(event.start),
-
-            id: event._id,
-            stamp: DateTime.fromMillis(event._creationTime),
-          })
+      for (const event of events) {
+        if (event.type === null || you.calendarSettings.hiddenEventTypes.includes(event.type)) {
+          continue;
         }
+        calendar.createEvent({
+          summary: event.name,
+          description: event.description,
+
+          start: DateTime.fromISO(event.start),
+
+          id: event._id,
+          stamp: DateTime.fromMillis(event._creationTime),
+        })
       }
 
       return new Response(calendar.toString(), {

@@ -22,10 +22,10 @@ export default defineSchema({
     admin: v.boolean(),
     group: v.id("group"),
 
-    calendarSettings: v.optional(v.object({
+    calendarSettings: v.object({
       showAllSlots: v.boolean(),
       hiddenEventTypes: v.array(v.id("eventType"))
-    }))
+    })
   }).index("email", ["email"])
     .index("by_group", ["group", "name"]),
 

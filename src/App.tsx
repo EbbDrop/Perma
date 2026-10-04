@@ -207,6 +207,7 @@ function userToString(user: {name: string, image?: string}): string {
 
 function Me() {
   const me = useQuery(api.usersAndGroups.user, {});
+  const eventTypes = useQuery(api.events.eventTypes, {});
 
   const updateUserName = useMutation(api.usersAndGroups.updateUserName);
   const updateUserPassword = useMutation(api.usersAndGroups.updateUserPassword);
@@ -222,6 +223,7 @@ function Me() {
       newMe.image = args.image;
       local_store.setQuery(api.usersAndGroups.user, {}, newMe);
     });
+  const updateCalendarSettings = useMutation(api.usersAndGroups.updateUserCalendarSettings);
 
   useEffect(() => {
       if (imageRef.current !== null && imageRef.current == document.activeElement) {
@@ -229,12 +231,18 @@ function Me() {
       }
   }, [me?.image]);
 
-  if (me === undefined) {
+  if (me === undefined || eventTypes === undefined) {
     return <Loading />;
   }
 
   const baseUrl = import.meta.env.VITE_CONVEX_SITE_URL as string
   const calendarUrl = `${baseUrl}/calendar.ics?group=${me.group}&user=${me._id}`;
+
+  const onChangeAllSlots= (allSlots: boolean) => {
+    updateCalendarSettings({
+      showAllSlots: allSlots,
+    })
+  };
 
   return (
     <div className="main-layout columns-layout">
@@ -275,9 +283,35 @@ function Me() {
           <span>Voeg deze link toe aan je kalenderapp om jouw permanentieschema te linken aan je kalender:</span>
           <div className="url-box">{calendarUrl}</div>
         </div>
-        {//<br/>
-        //<h5>Kalender instellingen:</h5>
-        }
+        <br/>
+        <h5>Kalender instellingen:</h5>
+        <div className="options-rows">
+          <label className="option">Toon enkel waneer ik perma heb<input type="radio" name="showAll" onChange={_ => onChangeAllSlots(false)} checked={!me.calendarSettings.showAllSlots}/></label>
+          <label className="option">Toon wie waneer perma heeft<input type="radio" name="showAll" onChange={_ => onChangeAllSlots(true)} checked={me.calendarSettings.showAllSlots}/></label>
+        </div>
+        <br/>
+        <h5>Evenementen:</h5>
+        <span>Welke andere evenementen will je dat er ook ik jou kalender worden opgenomen:</span>
+        <div className="options-rows">
+          {...eventTypes.map(et => (
+            <label
+              key={et._id}
+              className="option"
+            >
+              {et.name}
+              <input
+                type="checkbox"
+                checked={!me.calendarSettings.hiddenEventTypes.includes(et._id)}
+                onChange={e => void updateCalendarSettings({
+                  updateType: {
+                    type: et._id,
+                    hidden: !e.target.checked,
+                  }
+                })}
+              />
+            </label>
+          ))}
+        </div>
       </div>
     </div>
   );

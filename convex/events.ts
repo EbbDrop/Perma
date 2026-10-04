@@ -215,24 +215,3 @@ export const eventTypes = query({
     return await ctx.db.query("eventType").withIndex("by_group", q => q.eq("group", user.group)).collect();
   },
 });
-
-export const addcalandarFieldToUser = mutation({
-  args: {
-    preHide: v.array(v.id("eventType")),
-  },
-  handler: async (ctx, args) => {
-    const user = await getAuthUser(ctx);
-    if (!user.admin) {
-      throw Error("You need to be admin");     
-    }
-    const users = await ctx.db.query("users")
-      .withIndex("by_group", q => q.eq("group", user.group))
-      .collect();
-    await Promise.all(users.map(u => {
-      return ctx.db.patch("users", u._id, {calendarSettings: {
-        showAllSlots: false,
-        hiddenEventTypes: args.preHide,
-      }});
-    }));
-  },
-});

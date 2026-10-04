@@ -566,6 +566,16 @@ footer {
   --current-color: var(--color-text-primary);
 }
 
+.fill-in-slot>input[type="radio"] {
+  margin-left: auto;
+}
+
+.fill-in-slot:has(>input[type="radio"]:checked) {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  --current-color: var(--color-text-primary);
+}
+
 @media (max-width: 28rem) {
   .schedule-container {
     grid-template-columns: 1fr;
@@ -693,6 +703,7 @@ footer {
   width: 8em;
 }
 
+
 .logo-wrapper-for-safari-on-ios {
   flex: 0;
   margin-top: -0.5em;
@@ -768,6 +779,46 @@ footer {
 .user-note {
   white-space: pre-line;
   max-width: 40em;
+}
+
+.options-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.option {
+  display: grid;
+  grid-template-columns: auto auto;
+
+  align-items: center;
+  border-radius: var(--radius);
+  padding: 0.2em;
+  --current-color: var(--color-text);
+}
+
+.option:hover {
+  background-color: var(--color-bg);
+}
+
+.option>input[type="checkbox"] {
+  margin-left: auto;
+}
+
+.option:has(>input[type="checkbox"]:checked) {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  --current-color: var(--color-text-primary);
+}
+
+.option>input[type="radio"] {
+  margin-left: auto;
+}
+
+.option:has(>input[type="radio"]:checked) {
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  --current-color: var(--color-text-primary);
 }
 
 .loading-container {

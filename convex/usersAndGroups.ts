@@ -76,6 +76,10 @@ export const addUser = mutation({
                 group: user.group,
                 admin: false,
                 assisted: false,
+                calendarSettings: {
+                    showAllSlots: false,
+                    hiddenEventTypes: []
+                }
             }
         });
     },
@@ -197,6 +201,52 @@ export const updateUserName = mutation({
     },
 });
 
+export const updateUserCalendarSettings = mutation({
+    args: {
+        user: v.optional(v.id("users")),
+        showAllSlots: v.optional(v.boolean()),
+        updateType: v.optional(v.object({
+             hidden: v.boolean(),
+             type: v.id("eventType"),
+        })),
+    },
+    handler: async (ctx, args) => {
+        const authUser = await getAuthUser(ctx);
+        if (args.user !== undefined && !authUser.admin) {
+            throw Error("Need to be admin to modify other persons name");
+        }
+
+        let user = authUser;
+        if (args.user !== undefined) {
+            const otherUser = await ctx.db.get("users", args.user);
+            if (otherUser === null) {
+                throw Error("Invalid user");
+            }
+            user = otherUser;
+        }
+
+        let settings = user.calendarSettings;
+        if (args.showAllSlots !== undefined) {
+            settings.showAllSlots = args.showAllSlots;
+        }
+
+        if (args.updateType !== undefined) {
+            if (args.updateType.hidden && !settings.hiddenEventTypes.includes(args.updateType.type)) {
+                settings.hiddenEventTypes.push(args.updateType.type);
+            }
+            if (!args.updateType.hidden) {
+                const idx = settings.hiddenEventTypes.indexOf(args.updateType.type);
+                if (idx > -1) {
+                    settings.hiddenEventTypes.splice(idx, 1);
+                }
+            }
+        }
+
+
+        await ctx.db.patch("users", user._id, { calendarSettings: settings });
+    },
+});
+
 export const updateUserImage = mutation({
     args: {
         user: v.optional(v.id("users")),
@@ -206,7 +256,7 @@ export const updateUserImage = mutation({
     handler: async (ctx, args) => {
         const authUser = await getAuthUser(ctx);
         if (args.user !== undefined && !authUser.admin) {
-            throw Error("Need to be admin to modify other persons name");
+            throw Error("Need to be admin to modify other persons image");
         }
 
         let user = authUser;

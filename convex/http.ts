@@ -86,6 +86,7 @@ http.route({
           description: event.description,
 
           start: DateTime.fromISO(event.start),
+          end: DateTime.fromISO(event.start),
 
           id: event._id,
           stamp: DateTime.fromMillis(event._creationTime),

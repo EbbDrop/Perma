@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as events from "../events.js";
 import type * as http from "../http.js";
 import type * as schedule from "../schedule.js";
 import type * as usersAndGroups from "../usersAndGroups.js";
@@ -21,6 +22,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  events: typeof events;
   http: typeof http;
   schedule: typeof schedule;
   usersAndGroups: typeof usersAndGroups;

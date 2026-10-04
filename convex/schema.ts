@@ -63,5 +63,15 @@ export default defineSchema({
     type: v.id("slotType"),
     count: v.number(),
   }).index("by_type_user", ["type", "user"])
-    .index("by_user", ["user"])
+    .index("by_user", ["user"]),
+
+  event: defineTable({
+    group: v.id("group"),
+
+    name: v.string(),
+    description: v.string(),
+    start: v.string(),
+
+    visible: v.boolean(),
+  }).index("by_group", ["group", "start"]),
 });

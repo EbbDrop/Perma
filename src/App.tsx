@@ -105,6 +105,10 @@ export default function App() {
                   <h2>Shift soorten</h2>
                   <AdminEditTypes />
                 </div>} />
+                <Route path="events" element={<>
+                  <title>Perma | Events</title>
+                  <AdminEditEvents />
+                </>} />
                 <Route path="users" element={<>
                   <title>Perma | Kot genoten</title>
                   <AdminEditUsers />
@@ -1076,12 +1080,139 @@ function AdminEditUsers() {
   );
 }
 
+function AdminEditEvents() {
+  const addEvent = useMutation(api.events.addEvent);
+  const deleteEvent = useMutation(api.events.deleteEvent);
+  const updateEvent = useMutation(api.events.updateEvent).withOptimisticUpdate((local_store, args) => {
+    const events = local_store.getQuery(api.events.events, {})?.slice();
+    if (events === undefined) {
+      return;
+    }
+    const idx = events.findIndex(s => s._id == args.event);
+    if (idx < 0) {
+      return;
+    }
+    const event = structuredClone(events[idx]);
+    if (args.data.name !== undefined) {
+      event.name = args.data.name;
+    }
+    if (args.data.start !== undefined) {
+      event.start = args.data.start;
+    }
+    if (args.data.description !== undefined) {
+      event.description = args.data.description;
+    }
+    if (args.data.visible !== undefined) {
+      event.visible = args.data.visible;
+    }
+    events[idx] = event;
+    local_store.setQuery(api.events.events, {state: "upcoming+hidden"}, events);
+  });
+
+  const events = useQuery(api.events.events);
+  if (events === undefined) {
+    return <Loading />;
+  }
+
+  const htmlData = [];
+  for (const event of events) {
+    htmlData.push(<div>
+      <div key={event._id}>
+        <div className="edit-row">
+          <input
+            onBlur={e => void updateEvent({
+              event: event._id,
+              data: {
+                name: e.target.value,
+              }
+            })}
+            type="text"
+            defaultValue={event.name}
+          />
+          <label>
+            Zichtbaar: 
+            <input
+              type="checkbox"
+              onChange={e => void updateEvent({
+                event: event._id,
+                data: {visible: e.target.checked},
+              })}
+              checked={event.visible}
+            />
+          </label>
+          <label>
+            Start: 
+            <input
+              type="datetime-local"
+              onChange={e => void updateEvent({
+                event: event._id,
+                data: {start: DateTime.fromISO(e.target.value).toUTC().toISO() as string},
+              })}
+              value={DateTime.fromISO(event.start).toLocal().toISO({includeOffset: false}) as string}
+            />
+          </label>
+          <button
+            onClick={_ => {
+              const ok = window.confirm("Ben je zeker dat je het event \"" + event.name + "\" wilt verwijderen?");
+              if (ok === true) {
+                void deleteEvent({event: event._id})
+              }
+            }}
+          >verwijder</button>
+        </div>
+        <label>
+          Beschrijving: 
+          <br />
+          <textarea
+            className="notes"
+            rows={5}
+            defaultValue={event.description}
+            onBlur={e => void updateEvent({event: event._id, data: {description: e.target.value}})}
+            placeholder="..."
+          >
+          </textarea>
+        </label>
+      </div>
+    </div>);
+  }
+
+  return (
+    <div className="main-layout columns-layout">
+      <div className="small-colum">
+        <div className="edit-list">
+          {...htmlData}
+        </div>
+        <br/>
+        <hr/>
+        <form
+          className="edit-row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target as HTMLFormElement);
+            const name = formData.get("name") as string;
+            const start = formData.get("start") as string;
+            if (name !== null && start !== null) {
+              void addEvent({name , start })
+            }
+            (e.target as HTMLFormElement).reset()
+          }}
+        >
+          <input type="text" name="name" required placeholder="Evenement naam" />
+          <input type="datetime-local" name="start"/>
+          <button type="submit">Niew evenement</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function Admin() {
   return (
     <div>
       <nav>
         <NavLink to="/admin" end>Schema</NavLink>
         <NavLink to="/admin/slots" end>Shifts bewerken</NavLink>
+        <NavLink to="/admin/events" end>Evenementen</NavLink>
         <NavLink to="/admin/users" end>Kot genoten</NavLink>
       </nav>
       <br/>

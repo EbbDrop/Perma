@@ -844,8 +844,10 @@ export const note = query({
 })
 
 /**
- * @returns Retuns the schedule to create the ics calender data. You don't need to be
- * authenticated to use this so that the calendar can be integrated in other calendar products.
+ * You don't need to be authenticated to use this so that the calendar can be integrated in other
+ * calendar products.
+ * 
+ * @returns Retuns the schedule to create the ics calender data.
  */
 export const slotsForCalendar = query({
   args: {

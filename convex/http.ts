@@ -19,6 +19,7 @@ http.route({
       const user = url.searchParams.get("user");
       const group = url.searchParams.get("group");
       const all = (url.searchParams.get("all") || "false") !== "false";
+      const showEvents = (url.searchParams.get("events") || "true") !== "false";
       if (user === null || group === null) {
         return new Response("Need to specify group and user", {
           status: 400
@@ -58,7 +59,7 @@ http.route({
         if (all) {
           name = `${slot.performerUser.name} (${slot.name})`;
         } else {
-          name = `${slot.name}`;
+          name = `Perma ${slot.name}`;
         }
         calendar.createEvent({
           summary: name,
@@ -71,6 +72,25 @@ http.route({
           id: slot._id,
           stamp: DateTime.fromMillis(slot._creationTime),
         });
+      }
+
+      if (showEvents) {
+        const events = await ctx.runQuery(api.events.eventsForCalendar, {
+          user: user as Id<"users">,
+          group: group as Id<"group">,
+        });
+
+        for (const event of events) {
+          calendar.createEvent({
+            summary: event.name,
+            description: event.description,
+
+            start: DateTime.fromISO(event.start),
+
+            id: event._id,
+            stamp: DateTime.fromMillis(event._creationTime),
+          })
+        }
       }
 
       return new Response(calendar.toString(), {

@@ -1,6 +1,5 @@
 import { v } from "convex/values";
-import { query, mutation, MutationCtx } from "./_generated/server";
-import { Id, Doc } from "./_generated/dataModel";
+import { query, mutation } from "./_generated/server";
 import { DateTime } from "luxon";
 import { getAuthUser, getAuthUserGroup } from "./usersAndGroups";
 
@@ -32,7 +31,7 @@ export const addEvent = mutation({
       name: args.name,
       start: start.toISO() as string,
       description: "",
-      visible: false
+      type: null,
     });
   },
 });
@@ -42,7 +41,7 @@ export const addEvent = mutation({
  */
 export const events = query({
   args: {},
-  handler: async (ctx, args) => {
+  handler: async (ctx) => {
     const user = await getAuthUser(ctx);
 
     let events = await ctx.db.query("event")
@@ -90,6 +89,7 @@ export const updateEvent = mutation({
       start: v.optional(v.string()),
       description: v.optional(v.string()),
       visible: v.optional(v.boolean()),
+      type: v.optional(v.nullable(v.id("eventType"))),
     }),
   },
   handler: async (ctx, args) => {
@@ -129,3 +129,110 @@ export const deleteEvent = mutation({
   },
 });
 
+
+/**
+ * Add a new event type
+ *
+ * Admin only.
+ */
+export const addEventTypes = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+
+    return await ctx.db.insert("eventType", {
+        name: "",
+        group: user.group,
+    });
+  },
+});
+
+/**
+ * Change the name of an event type.
+ *
+ * Admin only.
+ */
+export const updateEventTypes = mutation({
+  args: {
+    eventType: v.id("eventType"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+    const eventType = await ctx.db.get("eventType", args.eventType);
+    if (eventType === null || eventType.group !== user.group) {
+      throw Error("Invalid event type");
+    }
+
+    return await ctx.db.patch("eventType", args.eventType, {name: args.name});
+  },
+});
+
+/**
+ * Delete an event type.
+ *
+ * Admin only.
+ */
+export const deleteEventTypes = mutation({
+  args: {
+    eventType: v.id("eventType"),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+    const eventType = await ctx.db.get("eventType", args.eventType);
+    if (eventType === null || eventType.group !== user.group) {
+      throw Error("Invalid event type");
+    }
+
+    const events = await ctx.db.query("event")
+      .withIndex("by_group", q => q.eq("group", user.group))
+      .filter(q => q.eq(q.field("type"), args.eventType))
+      .collect();
+    await Promise.all(events.map(event => {
+      return ctx.db.patch("event", event._id, {type: undefined});
+    }));
+
+    return await ctx.db.delete("eventType", args.eventType);
+  },
+});
+
+/**
+ * @returns A list of all the event types
+ */
+export const eventTypes = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await getAuthUser(ctx);
+    return await ctx.db.query("eventType").withIndex("by_group", q => q.eq("group", user.group)).collect();
+  },
+});
+
+export const addcalandarFieldToUser = mutation({
+  args: {
+    preHide: v.array(v.id("eventType")),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx);
+    if (!user.admin) {
+      throw Error("You need to be admin");     
+    }
+    const users = await ctx.db.query("users")
+      .withIndex("by_group", q => q.eq("group", user.group))
+      .collect();
+    await Promise.all(users.map(u => {
+      return ctx.db.patch("users", u._id, {calendarSettings: {
+        showAllSlots: false,
+        hiddenEventTypes: args.preHide,
+      }});
+    }));
+  },
+});

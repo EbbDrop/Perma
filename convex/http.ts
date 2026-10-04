@@ -18,8 +18,8 @@ http.route({
       const url = new URL(request.url);
       const user = url.searchParams.get("user");
       const group = url.searchParams.get("group");
-      const all = (url.searchParams.get("all") || "false") !== "false";
-      const showEvents = (url.searchParams.get("events") || "true") !== "false";
+      const all = false;
+      const showEvents = false;
       if (user === null || group === null) {
         return new Response("Need to specify group and user", {
           status: 400

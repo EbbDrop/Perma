@@ -21,6 +21,11 @@ export default defineSchema({
     note: v.optional(v.string()),
     admin: v.boolean(),
     group: v.id("group"),
+
+    calendarSettings: v.optional(v.object({
+      showAllSlots: v.boolean(),
+      hiddenEventTypes: v.array(v.id("eventType"))
+    }))
   }).index("email", ["email"])
     .index("by_group", ["group", "name"]),
 
@@ -69,9 +74,15 @@ export default defineSchema({
     group: v.id("group"),
 
     name: v.string(),
-    description: v.string(),
     start: v.string(),
-
-    visible: v.boolean(),
+    description: v.string(),
+    // Event is invisible in calendar when it's type is null
+    type: v.nullable(v.id("eventType")),
   }).index("by_group", ["group", "start"]),
+
+
+  eventType: defineTable({
+    group: v.id("group"),
+    name: v.string(),
+  }).index("by_group", ["group"]),
 });

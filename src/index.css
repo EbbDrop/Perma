@@ -284,6 +284,11 @@ h4 {
   margin-bottom: 0.4em;
 }
 
+h5 {
+  font-size: 1.2em;
+  margin-bottom: 0.4em;
+}
+
 table {
   border-collapse: separate;
   border-spacing: 0.1em;

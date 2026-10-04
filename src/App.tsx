@@ -106,7 +106,7 @@ export default function App() {
                   <AdminEditTypes />
                 </div>} />
                 <Route path="events" element={<>
-                  <title>Perma | Events</title>
+                  <title>Perma | Evenementen</title>
                   <AdminEditEvents />
                 </>} />
                 <Route path="users" element={<>
@@ -235,7 +235,6 @@ function Me() {
 
   const baseUrl = import.meta.env.VITE_CONVEX_SITE_URL as string
   const calendarUrl = `${baseUrl}/calendar.ics?group=${me.group}&user=${me._id}`;
-  const calendarAllUrl = `${calendarUrl}&all=true`;
 
   return (
     <div className="main-layout columns-layout">
@@ -271,13 +270,14 @@ function Me() {
         </div>
         <br/>
         <hr/>
+        <h4>Kalender:</h4>
         <div className="make-it-behave">
-          <h4>Persoonlijke kalender url:</h4>
+          <span>Voeg deze link toe aan je kalenderapp om jouw permanentieschema te linken aan je kalender:</span>
           <div className="url-box">{calendarUrl}</div>
-          <br />
-          <h4>Algemene kalender url:</h4>
-          <div className="url-box">{calendarAllUrl}</div>
         </div>
+        {//<br/>
+        //<h5>Kalender instellingen:</h5>
+        }
       </div>
     </div>
   );
@@ -691,7 +691,7 @@ function AdminEditTypes() {
     <br/>
     <div className="edit-list">{...htmlData}</div>
     <br/>
-    <button onClick={_ => void addType()}>Voeg shift toe</button>
+    <button onClick={_ => void addType()}>Voeg shift soort toe</button>
   </>);
 }
 
@@ -999,54 +999,52 @@ function AdminEditUsers() {
 
   const htmlData = [];
   for (const user of users) {
-    htmlData.push(<div>
-      <div key={user._id} className="edit-row">
+    htmlData.push(<div key={user._id} className="edit-row">
+      <input
+        onBlur={e => void updateUserName({
+          user: user._id,
+          name: e.target.value,
+        })}
+        type="text"
+        defaultValue={user.name}
+      />
+      <label>
+        Omkaderde: 
         <input
-          onBlur={e => void updateUserName({
+          type="checkbox"
+          onChange={e => void updateUser({
             user: user._id,
-            name: e.target.value,
+            data: {assisted: e.target.checked},
           })}
-          type="text"
-          defaultValue={user.name}
+          checked={user.assisted}
         />
-        <label>
-          Omkaderde: 
-          <input
-            type="checkbox"
-            onChange={e => void updateUser({
-              user: user._id,
-              data: {assisted: e.target.checked},
-            })}
-            checked={user.assisted}
-          />
-        </label>
-        <label>
-          Admin: 
-          <input
-            type="checkbox"
-            onChange={e => void updateUser({
-              user: user._id,
-              data: {admin: e.target.checked},
-            })}
-            disabled={user._id == selfUser._id}
-            checked={user.admin}
-          />
-        </label>
-        <button onClick={_ => {
-          const password = window.prompt(`Nieuw password voor ${user.name}`);
-          if (password !== null) {
-            void updateUserPassword({password, user: user._id});
+      </label>
+      <label>
+        Admin: 
+        <input
+          type="checkbox"
+          onChange={e => void updateUser({
+            user: user._id,
+            data: {admin: e.target.checked},
+          })}
+          disabled={user._id == selfUser._id}
+          checked={user.admin}
+        />
+      </label>
+      <button onClick={_ => {
+        const password = window.prompt(`Nieuw password voor ${user.name}`);
+        if (password !== null) {
+          void updateUserPassword({password, user: user._id});
+        }
+      }}>verander password</button>
+      {user._id == selfUser._id ? <div></div> : <button
+        onClick={_ => {
+          const response = window.prompt("Type \"verwijder " + user.name + "\" om de acount van " + user.name + " te verwijderen.");
+          if (response === "verwijder " + user.name) {
+            void deleteUser({user: user._id})
           }
-        }}>verander password</button>
-        {user._id == selfUser._id ? <div></div> : <button
-          onClick={_ => {
-            const response = window.prompt("Type \"verwijder " + user.name + "\" om de acount van " + user.name + " te verwijderen.");
-            if (response === "verwijder " + user.name) {
-              void deleteUser({user: user._id})
-            }
-          }}
-        >verwijder</button>}
-      </div>
+        }}
+      >verwijder</button>}
     </div>);
   }
 
@@ -1102,77 +1100,81 @@ function AdminEditEvents() {
     if (args.data.description !== undefined) {
       event.description = args.data.description;
     }
-    if (args.data.visible !== undefined) {
-      event.visible = args.data.visible;
+    if (args.data.type !== undefined) {
+      event.type = args.data.type;
     }
     events[idx] = event;
     local_store.setQuery(api.events.events, {state: "upcoming+hidden"}, events);
   });
 
   const events = useQuery(api.events.events);
-  if (events === undefined) {
+  const types = useQuery(api.events.eventTypes);
+  if (events === undefined || types === undefined) {
     return <Loading />;
   }
 
   const htmlData = [];
   for (const event of events) {
-    htmlData.push(<div>
-      <div key={event._id}>
-        <div className="edit-row">
-          <input
-            onBlur={e => void updateEvent({
-              event: event._id,
-              data: {
-                name: e.target.value,
-              }
-            })}
-            type="text"
-            defaultValue={event.name}
-          />
-          <label>
-            Zichtbaar: 
-            <input
-              type="checkbox"
-              onChange={e => void updateEvent({
-                event: event._id,
-                data: {visible: e.target.checked},
-              })}
-              checked={event.visible}
-            />
-          </label>
-          <label>
-            Start: 
-            <input
-              type="datetime-local"
-              onChange={e => void updateEvent({
-                event: event._id,
-                data: {start: DateTime.fromISO(e.target.value).toUTC().toISO() as string},
-              })}
-              value={DateTime.fromISO(event.start).toLocal().toISO({includeOffset: false}) as string}
-            />
-          </label>
-          <button
-            onClick={_ => {
-              const ok = window.confirm("Ben je zeker dat je het event \"" + event.name + "\" wilt verwijderen?");
-              if (ok === true) {
-                void deleteEvent({event: event._id})
-              }
-            }}
-          >verwijder</button>
-        </div>
+    htmlData.push(<div key={event._id}>
+      <div className="edit-row">
+        <input
+          onBlur={e => void updateEvent({
+            event: event._id,
+            data: {
+              name: e.target.value,
+            }
+          })}
+          type="text"
+          defaultValue={event.name}
+        />
         <label>
-          Beschrijving: 
-          <br />
-          <textarea
-            className="notes"
-            rows={5}
-            defaultValue={event.description}
-            onBlur={e => void updateEvent({event: event._id, data: {description: e.target.value}})}
-            placeholder="..."
+          Event soort: 
+          <select
+            onChange={(e) => {
+              const type = e.target.value === "" ? null : e.target.value as Id<"eventType">;
+              updateEvent({
+                event: event._id,
+                data: {type}
+              });
+            }}
+            value={event.type ?? ""}
           >
-          </textarea>
+            <option value="" aria-label="Onzichtbaar">Onzichtbaar</option>
+            {...types.map(t => <option value={t._id}>{t.name}</option>)}
+          </select>
         </label>
+        <label>
+          Start: 
+          <input
+            type="datetime-local"
+            onChange={e => void updateEvent({
+              event: event._id,
+              data: {start: DateTime.fromISO(e.target.value).toUTC().toISO() as string},
+            })}
+            value={DateTime.fromISO(event.start).toLocal().toISO({includeOffset: false}) as string}
+          />
+        </label>
+        <button
+          onClick={_ => {
+            const ok = window.confirm("Ben je zeker dat je het event \"" + event.name + "\" wilt verwijderen?");
+            if (ok === true) {
+              void deleteEvent({event: event._id})
+            }
+          }}
+        >verwijder</button>
       </div>
+      <label>
+        Beschrijving: 
+        <br />
+        <textarea
+          className="notes"
+          rows={5}
+          defaultValue={event.description}
+          onBlur={e => void updateEvent({event: event._id, data: {description: e.target.value}})}
+          placeholder="..."
+        >
+        </textarea>
+      </label>
     </div>);
   }
 
@@ -1184,6 +1186,7 @@ function AdminEditEvents() {
         </div>
         <br/>
         <hr/>
+        <h2>Evenement toevoegen</h2>
         <form
           className="edit-row"
           onSubmit={(e) => {
@@ -1201,9 +1204,47 @@ function AdminEditEvents() {
           <input type="datetime-local" name="start"/>
           <button type="submit">Niew evenement</button>
         </form>
+        <hr />
+        <h2>Evenement soorten</h2>
+        <AdminEditEventTypes />
       </div>
     </div>
   );
+}
+
+function AdminEditEventTypes() {
+  const addType = useMutation(api.events.addEventTypes);
+  const updateType = useMutation(api.events.updateEventTypes);
+  const deleteType = useMutation(api.events.deleteEventTypes);
+
+  const types = useQuery(api.events.eventTypes, {});
+  if (types === undefined) {
+    return <Loading />;
+  }
+
+  const htmlData = [];
+  for (const type of types) {
+    htmlData.push(<div key={type._id}>
+      <input type="text" onBlur={e => void updateType({
+          name: e.target.value,
+          eventType: type._id,
+      })} defaultValue={type.name} />
+      <span> </span>
+      <button onClick={_ => {
+        const ok = window.confirm("Ben je zeker dat je het evenement soort \"" + type.name + "\" wilt verwijderen?");
+        if (ok === true) {
+          void deleteType({eventType: type._id})
+        }
+      }}>verwijder</button>
+    </div>);
+  }
+
+  return (<>
+    <br/>
+    <div className="edit-list">{...htmlData}</div>
+    <br/>
+    <button onClick={_ => void addType()}>Voeg event soort toe</button>
+  </>);
 }
 
 function Admin() {

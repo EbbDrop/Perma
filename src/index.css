@@ -433,6 +433,10 @@ footer {
   width: 100%;
 }
 
+.table-extra-data {
+  color: var(--color-text-light);
+}
+
 .sticky {
   position: sticky;
   top: 1em;

@@ -13,7 +13,7 @@ import { api } from "../convex/_generated/api";
 import { useAuthActions } from "@convex-dev/auth/react";
 
 import { Doc, Id } from "../convex/_generated/dataModel";
-import { CountsData, SlotWithSelected } from "../convex/schedule";
+import { CountsData, CountsDataExtra, SlotWithSelected } from "../convex/schedule";
 
 import { ChangeEvent, ReactElement, useEffect, useState, useRef } from "react";
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from "react-router";
@@ -353,7 +353,7 @@ function farDateWarning(date: DateTime) {
   return null;
 }
 
-function CountsTable({ data }: { data: CountsData }) {
+function CountsTable({ data, extraData }: { data: CountsData, extraData?: CountsDataExtra }) {
   return (<div className="table-holder">
     <table className="spacius-table">
       <thead>
@@ -369,6 +369,7 @@ function CountsTable({ data }: { data: CountsData }) {
           <td scope="row">{userToString(u)}</td>
           {...data.types.map(t => (<td>
             {t.counts[u._id] ?? 0}
+            {extraData && (<span className="table-extra-data"> ({(extraData[t._id] ?? {})[u._id] ?? 0})</span>)}
           </td>))}
         </tr>))}
         <tr className="table-empty-row" aria-hidden="true">
@@ -861,9 +862,10 @@ function AdminSetPerformer() {
 
   const slots = useQuery(api.schedule.upcomingSlotsWithSelected);
   const counts = useQuery(api.schedule.countsTable);
+  const prevCounts = useQuery(api.schedule.countsTablePrevWeek);
   const users = useQuery(api.usersAndGroups.users);
   const waitingOnSelection = useQuery(api.schedule.waitingOnSelection);
-  if (slots === undefined || counts === undefined || users === undefined || waitingOnSelection === undefined) {
+  if (slots === undefined || counts === undefined || prevCounts === undefined || users === undefined || waitingOnSelection === undefined) {
     return <Loading />;
   }
   const currentCounts = structuredClone(counts);
@@ -973,8 +975,8 @@ function AdminSetPerformer() {
               </ul>
             </div>)}
             <div className="table-column">
-              <h2>Overzicht deze week</h2>
-              <CountsTable data={currentCounts}/>
+              <h2>Overzicht deze week <span className="table-extra-data">(vorige week)</span></h2>
+              <CountsTable data={currentCounts} extraData={prevCounts}/>
             </div>
             <div className="table-column">
               <h2>Overzicht</h2>
@@ -1003,8 +1005,8 @@ function AdminSetPerformer() {
                 <hr/>
               </div>)}
               <div>
-                <h2>Overzicht deze week</h2>
-                <CountsTable data={currentCounts}/>
+                <h2>Overzicht deze week <span className="table-extra-data">(vorige week)</span></h2>
+                <CountsTable data={currentCounts} extraData={prevCounts}/>
                 <hr/>
                 <h2>Overzicht</h2>
                 <CountsTable data={counts}/>

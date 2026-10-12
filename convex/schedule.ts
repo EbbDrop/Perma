@@ -256,6 +256,52 @@ export const countsTable = query({
   },
 });
 
+export type CountDataExtra = Record<Id<"users">, number>;
+export type CountsDataExtra = Record<Id<"slotType">, CountDataExtra>;
+/**
+ * @returns like countsTable but only data from the last published week. The week is defined as the
+ * 7 days before the first slot in the upcoming schedule.
+ */
+export const countsTablePrevWeek = query({
+  args: {},
+  handler: async (ctx): Promise<CountsDataExtra> => {
+    const [authUser, group] = await getAuthUserGroup(ctx);
+
+    const firstUpcommingSlot = await ctx.db.query("slots")
+      .withIndex("by_group_state", q => q.eq("group", authUser.group).eq("state", "upcoming"))
+      .first();
+    if (firstUpcommingSlot === null) {
+      return {};
+    }
+    const startDate = DateTime
+      .fromISO(firstUpcommingSlot.start)
+      .setZone(group.timezone)
+      .startOf("day")
+      .plus({weeks: -1})
+      .toUTC().toISO() as string;
+
+    const slots = await ctx.db.query("slots")
+      .withIndex("by_group_state", q => q.eq("group", authUser.group).eq("state", "published").gt("start", startDate))
+      .collect();
+
+    const typesWithCounts: CountsDataExtra = {};
+    for (const slot of slots) {
+      if (slot.performer === undefined || slot.type === null) {
+        continue;
+      }
+      if (!(slot.type in typesWithCounts)) {
+        typesWithCounts[slot.type] = {};
+      }
+      if (!(slot.performer in typesWithCounts[slot.type])) {
+        typesWithCounts[slot.type][slot.performer] = 0;
+      }
+      typesWithCounts[slot.type][slot.performer] += 1;
+    }
+
+    return typesWithCounts;
+  },
+});
+
 function compareSlots(a: Doc<"slots">, b: Doc<"slots">) {
   if (a.start < b.start) {
     return -1;
@@ -298,8 +344,8 @@ export const newUpcomingSlot = mutation({
         type: null,
         group: user.group,
         showTime: true,
-        start: start.toISO() as string,
-        end: end.toISO() as string,
+        start: start.toUTC().toISO() as string,
+        end: end.toUTC().toISO() as string,
         state: "upcoming",
     });
   }
@@ -338,18 +384,18 @@ export const updateUpcomingSlot = mutation({
       const start = DateTime.fromISO(args.data.start).setZone(group.timezone);
       const end = DateTime.fromISO(slot.end).setZone(group.timezone);
       if (end < start) {
-        args.data.end = start.toISO() as string;
+        args.data.end = start.toUTC().toISO() as string;
       }
 
-      args.data.start = start.toISO() as string;
+      args.data.start = start.toUTC().toISO() as string;
     }
     if (args.data.end !== undefined) {
       const end = DateTime.fromISO(args.data.end).setZone(group.timezone);
       const start = DateTime.fromISO(slot.start).setZone(group.timezone);
       if (end < start) {
-        args.data.start = end.toISO() as string;
+        args.data.start = end.toUTC().toISO() as string;
       }
-      args.data.end = end.toISO() as string;
+      args.data.end = end.toUTC().toISO() as string;
     }
 
     await ctx.db.patch("slots", args.slot, args.data);
@@ -400,8 +446,8 @@ export const rangeEditUpcomingSlots = mutation({
       throw Error("You need to be admin");     
     }
 
-    const startRange = DateTime.fromISO(args.startRange).setZone(group.timezone).toISO() as string;
-    const endRange = DateTime.fromISO(args.endRange).setZone(group.timezone).toISO() as string;
+    const startRange = DateTime.fromISO(args.startRange).toUTC().toISO() as string;
+    const endRange = DateTime.fromISO(args.endRange).toUTC().toISO() as string;
 
     let slotsToEdit = await ctx.db.query("slots")
       .withIndex("by_group_state", q => 
@@ -422,8 +468,8 @@ export const rangeEditUpcomingSlots = mutation({
     slotsToEdit.sort(compareSlots);
 
     const movedTimes = (slot: Doc<"slots">) => ({
-      start: DateTime.fromISO(slot.start).setZone(group.timezone).plus({days: args.moveDays}).toISO() as string,
-      end: DateTime.fromISO(slot.end).setZone(group.timezone).plus({days: args.moveDays}).toISO() as string,
+      start: DateTime.fromISO(slot.start).setZone(group.timezone).plus({days: args.moveDays}).toUTC().toISO() as string,
+      end: DateTime.fromISO(slot.end).setZone(group.timezone).plus({days: args.moveDays}).toUTC().toISO() as string,
     });
     
     switch (args.action) {
@@ -454,7 +500,7 @@ export const rangeEditUpcomingSlots = mutation({
 });
 
 /**
- * Change the performer of a slot. Changing the performer of a upcoming slot can only be done by
+ * Change the performer of a slot. Changing the performer of an upcoming slot can only be done by
  * admins.
  */
 export const slotsSetPerformer = mutation({
@@ -583,7 +629,7 @@ export const publishUpcoming = mutation({
     }
 
 
-    const startToday = DateTime.fromISO(args.now).startOf('day').setZone(group.timezone).toISO() as string;
+    const startToday = DateTime.fromISO(args.now).setZone(group.timezone).startOf('day').toUTC().toISO() as string;
 
     const oldSlots = await ctx.db.query("slots")
       .withIndex("by_group_state", q => q.eq("group", user.group)
@@ -609,8 +655,8 @@ export const publishUpcoming = mutation({
       .collect());
 
     const pairs = await Promise.all(slotsToPublish.map(async slot => {
-      const start = DateTime.fromISO(slot.start).setZone(group.timezone).plus({weeks: 1}).toISO() as string;
-      const end = DateTime.fromISO(slot.end).setZone(group.timezone).plus({weeks: 1}).toISO() as string;
+      const start = DateTime.fromISO(slot.start).setZone(group.timezone).plus({weeks: 1}).toUTC().toISO() as string;
+      const end = DateTime.fromISO(slot.end).setZone(group.timezone).plus({weeks: 1}).toUTC().toISO() as string;
       await ctx.db.insert("slots", {
           start,
           end,

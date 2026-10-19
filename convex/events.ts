@@ -108,8 +108,7 @@ export const updateEvent = mutation({
       args.data.start = start.toISO() as string;
     }
 
-    const sequence = (event.sequence ?? 1) + 1;
-    const patch = { ...args.data, sequence };
+    const patch = { ...args.data, sequence: event.sequence + 1 };
     return await ctx.db.patch("event", args.event, patch);
   },
 });

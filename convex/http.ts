@@ -90,6 +90,7 @@ http.route({
 
           id: event._id,
           stamp: DateTime.fromMillis(event._creationTime),
+          sequence: event.sequence ?? 1,
         })
       }
 

@@ -72,6 +72,7 @@ export default defineSchema({
 
   event: defineTable({
     group: v.id("group"),
+    sequence: v.optional(v.number()),
 
     name: v.string(),
     start: v.string(),

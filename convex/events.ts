@@ -27,6 +27,7 @@ export const addEvent = mutation({
 
     return await ctx.db.insert("event", {
       group: user.group,
+      sequence: 0,
 
       name: args.name,
       start: start.toISO() as string,
@@ -107,7 +108,9 @@ export const updateEvent = mutation({
       args.data.start = start.toISO() as string;
     }
 
-    return await ctx.db.patch("event", args.event, args.data);
+    const sequence = (event.sequence ?? 1) + 1;
+    const patch = { ...args.data, sequence };
+    return await ctx.db.patch("event", args.event, patch);
   },
 });
 

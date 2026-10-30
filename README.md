@@ -40,3 +40,5 @@ and frontend will be updated.
 > index.html file in the root. To work around this the
 > [spa-github-pages](https://github.com/rafgraph/spa-github-pages) hack by rafgraph is used.
 
+### Copyright 
+All rights reserved by Ebbe Steenhoudt 
